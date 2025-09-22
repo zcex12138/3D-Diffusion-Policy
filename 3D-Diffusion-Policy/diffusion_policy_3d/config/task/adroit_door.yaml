@@ -16,13 +16,13 @@ shape_meta: &shape_meta
 
 env_runner:
   _target_: diffusion_policy_3d.env_runner.adroit_runner.AdroitRunner
-  eval_episodes: 20
+  eval_episodes: 10
   max_steps: 300
   n_obs_steps: ${n_obs_steps}
   n_action_steps: ${n_action_steps}
   fps: 10
   task_name: door
-  render_size: 84
+  render_size: 640
   use_point_crop: ${policy.use_point_crop}
 
 dataset:

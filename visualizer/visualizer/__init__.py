@@ -1,1 +1,2 @@
 from .pointcloud import Visualizer, visualize_pointcloud
+from .realtime_3d_visualizer import RealTime3DVisualizer

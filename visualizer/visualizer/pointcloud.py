@@ -81,7 +81,7 @@ class Visualizer:
         fig.update_layout(
             
             scene=dict(
-                # aspectmode='cube', 
+                aspectmode='data', 
                 xaxis=dict(
                     showbackground=False,  # 隐藏背景网格
                     showgrid=True,        # 隐藏网格

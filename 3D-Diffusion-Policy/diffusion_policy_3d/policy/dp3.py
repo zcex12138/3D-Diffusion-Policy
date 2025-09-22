@@ -179,53 +179,65 @@ class DP3(BasePolicy):
         obs_dict: must include "obs" key
         result: must include "action" key
         """
-        # normalize input
+        # 1. 数据预处理和归一化
+        # 对输入观察数据进行归一化处理
         nobs = self.normalizer.normalize(obs_dict)
-        # this_n_point_cloud = nobs['imagin_robot'][..., :3] # only use coordinate
+        
+        # 如果不需要点云颜色信息，只保留坐标信息 (x, y, z)
         if not self.use_pc_color:
             nobs['point_cloud'] = nobs['point_cloud'][..., :3]
         this_n_point_cloud = nobs['point_cloud']
         
-        
+        # 2. 获取数据维度信息
+        # 从观察数据中获取批次大小和观察步数
         value = next(iter(nobs.values()))
-        B, To = value.shape[:2]
-        T = self.horizon
-        Da = self.action_dim
-        Do = self.obs_feature_dim
-        To = self.n_obs_steps
+        B, To = value.shape[:2]  # B: 批次大小, To: 观察步数
+        T = self.horizon          # 总时间范围
+        Da = self.action_dim      # 动作维度
+        Do = self.obs_feature_dim # 观察特征维度
+        To = self.n_obs_steps     # 观察步数
 
-        # build input
+        # 获取设备和数据类型
         device = self.device
         dtype = self.dtype
 
-        # handle different ways of passing observation
+        # 3. 处理观察条件的不同方式
         local_cond = None
         global_cond = None
+        
         if self.obs_as_global_cond:
-            # condition through global feature
+            # 方式1: 通过全局特征进行条件化
+            # 将观察数据重塑为 (B*To, ...) 格式进行编码
             this_nobs = dict_apply(nobs, lambda x: x[:,:To,...].reshape(-1,*x.shape[2:]))
             nobs_features = self.obs_encoder(this_nobs)
+            
             if "cross_attention" in self.condition_type:
-                # treat as a sequence
+                # 交叉注意力模式：将特征视为序列
                 global_cond = nobs_features.reshape(B, self.n_obs_steps, -1)
             else:
-                # reshape back to B, Do
+                # 标准模式：重塑回 (B, Do) 格式
                 global_cond = nobs_features.reshape(B, -1)
-            # empty data for action
+            
+            # 创建空的动作数据作为条件数据
             cond_data = torch.zeros(size=(B, T, Da), device=device, dtype=dtype)
             cond_mask = torch.zeros_like(cond_data, dtype=torch.bool)
         else:
-            # condition through impainting
+            # 方式2: 通过修复(inpainting)进行条件化
+            # 将观察数据重塑为 (B*To, ...) 格式进行编码
             this_nobs = dict_apply(nobs, lambda x: x[:,:To,...].reshape(-1,*x.shape[2:]))
             nobs_features = self.obs_encoder(this_nobs)
-            # reshape back to B, T, Do
+            # 重塑回 (B, To, Do) 格式
             nobs_features = nobs_features.reshape(B, To, -1)
+            
+            # 创建包含动作和观察特征的条件数据
             cond_data = torch.zeros(size=(B, T, Da+Do), device=device, dtype=dtype)
             cond_mask = torch.zeros_like(cond_data, dtype=torch.bool)
+            # 在观察时间段内填充观察特征
             cond_data[:,:To,Da:] = nobs_features
             cond_mask[:,:To,Da:] = True
 
-        # run sampling
+        # 4. 运行扩散采样过程
+        # 使用条件数据生成动作轨迹
         nsample = self.conditional_sample(
             cond_data, 
             cond_mask,
@@ -233,21 +245,21 @@ class DP3(BasePolicy):
             global_cond=global_cond,
             **self.kwargs)
         
-        # unnormalize prediction
+        # 5. 后处理预测结果
+        # 提取动作部分并反归一化
         naction_pred = nsample[...,:Da]
         action_pred = self.normalizer['action'].unnormalize(naction_pred)
 
-        # get action
-        start = To - 1
-        end = start + self.n_action_steps
+        # 6. 提取实际执行的动作序列
+        # 从预测的完整轨迹中提取需要执行的动作片段
+        start = To - 1  # 从最后一个观察时刻开始
+        end = start + self.n_action_steps  # 执行n_action_steps个动作
         action = action_pred[:,start:end]
         
-        # get prediction
-
-
+        # 7. 构建返回结果
         result = {
-            'action': action,
-            'action_pred': action_pred,
+            'action': action,           # 实际执行的动作序列
+            'action_pred': action_pred, # 完整的动作预测轨迹
         }
         
         return result

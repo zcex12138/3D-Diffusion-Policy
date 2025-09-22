@@ -1,0 +1,30 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Train DP3 - Dphand Pick Place",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--config-name=dp3.yaml",
+                "task=dphand_pick-place",
+                "hydra.run.dir=data/outputs/dphand_pick-place-cube_dp3_0919_full_state",
+                "training.debug=false",
+                "training.seed=0",
+                "training.device=cuda:0",
+                "exp_name=debug_dphand_pick-place_dp3_0919",
+                "checkpoint.save_ckpt=true"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/3D-Diffusion-Policy",
+            "env": {
+                "HYDRA_FULL_ERROR": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+            },
+            "justMyCode": false,
+            "stopOnEntry": false,
+            "python": "${command:python.interpreterPath}"
+        }
+    ]
+}
