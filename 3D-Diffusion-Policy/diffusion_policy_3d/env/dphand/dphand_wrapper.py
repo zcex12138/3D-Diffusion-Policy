@@ -7,9 +7,9 @@ from diffusion_policy_3d.gym_util_dphand.mujoco_point_cloud import PointCloudGen
 from diffusion_policy_3d.gym_util_dphand.mjpc_wrapper import point_cloud_sampling
 from dphand.dphand_env import DphandPickCubeEnv
 
-TASK_BOUNDS = {
-    'dphand_pick_cube': [-0.5, -0.5, 0.0, 0.5, 0.5, 1.0],
-}
+# TASK_BOUNDS = {
+#     'dphand_pick_cube': [-0.5, -0.5, 0.0, 0.5, 0.5, 1.0],
+# }
 
 class DphandEnvWrapper(gym.ObservationWrapper):
     def __init__(self, env: DphandPickCubeEnv, device="cuda:0", num_points=1024, use_point_cloud=True):
@@ -34,8 +34,8 @@ class DphandEnvWrapper(gym.ObservationWrapper):
         
 
         # 设置任务边界
-        x_min, y_min, z_min, x_max, y_max, z_max = TASK_BOUNDS['dphand_pick_cube']
-        self.min_bound, self.max_bound = [x_min, y_min, z_min], [x_max, y_max, z_max]
+        # x_min, y_min, z_min, x_max, y_max, z_max = TASK_BOUNDS['dphand_pick_cube']
+        # self.min_bound, self.max_bound = [x_min, y_min, z_min], [x_max, y_max, z_max]
 
         # 环境参数
         self.episode_length = self._max_episode_steps = 1000
@@ -44,7 +44,6 @@ class DphandEnvWrapper(gym.ObservationWrapper):
         # 设置observation space
         self._update_observation_space()
 
-
     def _update_observation_space(self):
         """更新观察空间，在原始环境观察基础上添加点云数据"""
         obs_space = {}
@@ -52,10 +51,10 @@ class DphandEnvWrapper(gym.ObservationWrapper):
         obs_space['point_cloud'] = spaces.Box(-np.inf, np.inf, (self.num_points, 6), np.float32)  # 修改为6通道以支持RGB颜色
         obs_space['depth'] = spaces.Box(0, 255, (self.image_size, self.image_size), np.float32)
         # 添加机器人状态观察空间（从原始状态中提取）
-        obs_sensor_dim = len(self.env.unwrapped._dphand_dof_ids) * 2 if hasattr(self.env, '_dphand_dof_ids') else 56
+        obs_sensor_dim = len(self.env.unwrapped._dphand_dof_ids) + 3
         obs_space['agent_pos'] = spaces.Box(-np.inf, np.inf, (obs_sensor_dim,), np.float32)
         # 添加完整状态观察空间
-        obs_space['full_state'] = spaces.Box(-np.inf, np.inf, (obs_sensor_dim + 14,), np.float32)
+        obs_space['full_state'] = spaces.Box(-np.inf, np.inf, (obs_sensor_dim * 2 + 14,), np.float32)
         self.observation_space = spaces.Dict(obs_space)
 
     def get_point_cloud(self, use_rgb=True):
@@ -87,23 +86,25 @@ class DphandEnvWrapper(gym.ObservationWrapper):
             # 仍然需要获取深度图像用于其他用途
             depth = self.pc_generator.captureImage(self.pc_generator.cam_id, capture_depth=True)
         
-        # 从原始观察中提取机器人状态（关节位置+速度）
-        robot_state = np.concatenate([obs["state"]["dphand/joint_pos"], obs["state"]["dphand/joint_vel"]])
+        new_obs = {}
         # 在原始观察基础上添加新的观察数据
-        obs['image'] = obs['images'][self.cam_name]
-        obs['point_cloud'] = point_cloud
-        obs['depth'] = depth
-        obs['agent_pos'] = robot_state
+        new_obs['image'] = obs['images'][self.cam_name]
+        new_obs['point_cloud'] = point_cloud
+        new_obs['depth'] = depth
+        new_obs['agent_pos'] = np.concatenate([
+            obs["state"]["dphand/joint_pos"],
+            obs["state"]["block_pos"]
+        ])
         # 构建完整状态：包含原有的state部分
-        obs['full_state'] = np.concatenate([
+        new_obs['full_state'] = np.concatenate([
             obs["state"]["dphand/joint_pos"],
             obs["state"]["dphand/joint_vel"],
             obs["state"]["block_pos"],
             obs["state"]["block_rot"],
             obs["state"]["block2_pos"],
-            obs["state"]["block2_rot"],
+            obs["state"]["block2_rot"]
         ])
-        return obs
+        return new_obs
 
     def step(self, action):
         """执行动作"""
