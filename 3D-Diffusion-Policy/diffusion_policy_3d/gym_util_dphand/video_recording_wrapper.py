@@ -6,24 +6,23 @@ from termcolor import cprint
 class SimpleVideoRecordingWrapper(gym.Wrapper):
     def __init__(self, 
             env, 
-            mode='rgb_array',
             steps_per_render=1,
+            camera_id=1,
         ):
         """
         When file_path is None, don't record.
         """
         super().__init__(env)
         
-        self.mode = mode
         self.steps_per_render = steps_per_render
-
+        self.camera_id = camera_id
         self.step_count = 0
 
     def reset(self, **kwargs):
         obs = super().reset(**kwargs)
         self.frames = list()
 
-        frame = self.env.render(mode=self.mode)
+        frame = self.env.unwrapped._viewer.render_rgb_cam("rgb_array", self.camera_id)
         assert frame.dtype == np.uint8
         self.frames.append(frame)
         
@@ -34,7 +33,7 @@ class SimpleVideoRecordingWrapper(gym.Wrapper):
         result = super().step(action)
         self.step_count += 1
         
-        frame = self.env.render(mode=self.mode)
+        frame = self.env.unwrapped._viewer.render_rgb_cam("rgb_array", self.camera_id) if (self.step_count % self.steps_per_render == 0) else self.frames[-1]
         assert frame.dtype == np.uint8
         self.frames.append(frame)
         

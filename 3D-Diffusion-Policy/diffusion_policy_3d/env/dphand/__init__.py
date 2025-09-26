@@ -1,1 +1,2 @@
-from .dphand_wrapper import DphandEnvWrapper
+from .dphand_wrapper import DphandEnvWrapper, DphandPandaEnvWrapper
+

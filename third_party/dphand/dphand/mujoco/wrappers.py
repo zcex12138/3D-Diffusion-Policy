@@ -42,7 +42,7 @@ class TeleopIntervention(gym.ActionWrapper):
     A wrapper to allow teleoperation intervention in the environment.
     When the user presses 'p', the teleoperation is toggled on/off.
     """
-    def __init__(self, env, ip="192.168.3.11", test=True, use_relative_pose=False):
+    def __init__(self, env, ip="192.168.3.11", test=True, use_relative_pose=True):
         super().__init__(env)
         env.reset()
         self.expert = DPhandTeleoperator(ip, test=test, n_step=5, use_relative_pose=use_relative_pose)
@@ -51,9 +51,6 @@ class TeleopIntervention(gym.ActionWrapper):
         self.use_relative_pose = use_relative_pose
         self.listener = keyboard.Listener(on_press=self.on_press)
         self.listener.start()
-
-        if self.use_relative_pose:
-            self._init_pos = self.env.unwrapped.data.ctrl[:3].copy()
 
     def on_press(self, key):
         self.keyboard = key.char if hasattr(key, 'char') else key.name
@@ -68,10 +65,11 @@ class TeleopIntervention(gym.ActionWrapper):
         - action: teleop action if nonezero; else, policy action
         """
         if self.intervened:
-            expert_a = self.expert.get_target_action_j2j()
+            arm_pos, arm_rot, angles = self.expert.get_target_action_j2j()
             if self.use_relative_pose:
-                expert_a[:3] = self._init_pos + 2.0 * expert_a[:3]
-            return expert_a, True
+                action[:3] = self._init_pos + 2.0 * arm_pos
+                action[3:7] = arm_rot
+                action[7:] = angles
         return action, False
 
     def step(self, action):
@@ -79,6 +77,8 @@ class TeleopIntervention(gym.ActionWrapper):
         obs, rew, done, truncated, info = self.env.step(new_action)
         info["replaced"] = True if replaced else False
         info["action"] = new_action
+        # update mocap
+        self.env.update_mocap('teleop', new_action[:3], new_action[3:7])
         return obs, rew, done, truncated, info
     
     def close(self):
@@ -88,30 +88,9 @@ class TeleopIntervention(gym.ActionWrapper):
 
     def reset(self, seed=None, **kwargs):
         obs, info = self.env.reset()
+        if self.use_relative_pose:
+            self._init_pos = self.env.unwrapped.data.sensor('tcp_pos').data.astype(np.float32)
         self.keyboard = None
-        # for i in range(30):
-        #     self.step(np.zeros(self.action_space.shape))  # 让expert更新初始位置
+        for i in range(20):
+            self.step(np.zeros(self.action_space.shape))  # 让expert更新初始位置
         return obs, info
-
-        
-class TeleopIntervention_dpanda(TeleopIntervention):
-    def __init__(self, env, ip="192.168.3.27", test=True):
-        super().__init__(env=env, ip=ip, test=test)
-
-    def action(self, action: np.ndarray) -> np.ndarray:
-        """
-        Input:
-        - action: policy action
-        Output:
-        - action: teleop action if nonezero; else, policy action
-        """
-        if self.intervened:
-            expert_a = self.expert.get_target_action_j2j()
-            # arm pose
-            action[:3] = expert_a[:3]
-            action[3:7] = rpy2quat(expert_a[3:6])
-            # hand joints
-            action[7] = 0 # wrist
-            action[9:] = expert_a[8:]
-            return action, True
-        return action, False

@@ -2,6 +2,7 @@ from gymnasium.envs.mujoco.mujoco_rendering import WindowViewer, OffScreenViewer
 from typing import Optional, Dict, Literal
 import mujoco
 import numpy as np
+import glfw
 
 class OSViewer(OffScreenViewer):
     def __init__(
@@ -55,6 +56,7 @@ class Viewer(WindowViewer):
             visual_options=visual_options,
         )
 
+        self._hide_menu = True
         self.img_obs_width = img_obs_width
         self.img_obs_height = img_obs_height
 
@@ -145,17 +147,26 @@ class Viewer(WindowViewer):
             return rgb_img, depth_img
     
     def render(self):
-        self.vopt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = 1
+        # self.vopt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = 1
         # self.vopt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = 1
         super().render()
-        self.vopt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = 0
+        # self.vopt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = 0
         # self.vopt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = 0
 
-    def render_group(self, group_id: int):
-        self.vopt.geomgroup[group_id] = 1
+    def set_geomgroup(self, group_id, flag: bool):
+        self.vopt.geomgroup[group_id] = flag
     
-    def render_segment_depth_except_ground(self, camera_id):
+    def set_sitegroup(self, group_id, flag: bool):
+        self.vopt.sitegroup[group_id] = flag
+    
+    def render_segment_depth(self, camera_id, geom_id=0):
+        """
+        用于在深度图中过滤 id < geom_id 的物体
+        """
         segment, depth = self.render_rgb_cam(render_mode="rgbd_tuple", camera_id=camera_id, segmentation=True)
-        segment = segment[:, :, 1] > 0
+        segment = segment[:, :, 1] > geom_id
         depth = depth * segment
         return segment, depth
+    
+    # def is_alived(self):
+    #     return glfw.window_should_close(self.window)

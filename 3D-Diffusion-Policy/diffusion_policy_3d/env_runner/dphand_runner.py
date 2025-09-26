@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import collections
 import tqdm
-from dphand.dphand_env import DphandPickCubeEnv
+from dphand.envs.dphand_env import DphandPickCubeEnv
 from diffusion_policy_3d.env import DphandEnvWrapper
 from diffusion_policy_3d.gym_util_dphand.multistep_wrapper import MultiStepWrapper
 from diffusion_policy_3d.gym_util_dphand.video_recording_wrapper import SimpleVideoRecordingWrapper

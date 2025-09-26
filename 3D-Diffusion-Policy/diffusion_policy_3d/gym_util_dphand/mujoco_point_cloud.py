@@ -117,7 +117,7 @@ class PointCloudGenerator(object):
     @param cam_name:    相机名称 (字符串)
     @param img_size:    图像尺寸
     """
-    def __init__(self, model, viewer, cam_name, img_size=84):
+    def __init__(self, model, viewer, cam_name, img_size=84, filter_geom_id=0):
         super(PointCloudGenerator, self).__init__()
 
         self.model = model
@@ -128,7 +128,7 @@ class PointCloudGenerator(object):
         self.img_height = img_size
 
         self.cam_name = cam_name
-        
+        self.filter_geom_id = filter_geom_id
         # get camera id
         self.cam_id = self.model.camera(self.cam_name).id
         fovy = math.radians(self.model.cam_fovy[self.cam_id])
@@ -136,6 +136,16 @@ class PointCloudGenerator(object):
         cam_mat = np.array(((f, 0, self.img_width / 2), (0, f, self.img_height / 2), (0, 0, 1)))
         self.cam_mat = cam_mat
 
+    # Render and process an image
+    def captureImage(self, camera_id, capture_depth=True):
+        _, depth = self.viewer.render_segment_depth(camera_id, self.filter_geom_id)
+        if capture_depth:
+            depth = self.depthimg2Meters(depth)
+            return depth
+        else:
+            rgb_img = self.viewer.render_rgb_cam("rgb_array", camera_id, False)
+            return rgb_img
+        
     def generateCroppedPointCloud(self, save_img_dir=None):
         """
         生成裁剪后的点云 (单相机版本)
@@ -157,8 +167,6 @@ class PointCloudGenerator(object):
         )
         
         return point_cloud, depth
-
-
      
     # https://github.com/htung0101/table_dome/blob/master/table_dome_calib/utils.py#L160
     def depthimg2Meters(self, depth):
@@ -174,15 +182,6 @@ class PointCloudGenerator(object):
     def horizontalFlip(self, img):
         return np.flip(img, axis=1)
     
-    # Render and process an image
-    def captureImage(self, camera_id, capture_depth=True):
-        _, depth = self.viewer.render_segment_depth_except_ground(camera_id)
-        if capture_depth:
-            depth = self.depthimg2Meters(depth)
-            return depth
-        else:
-            rgb_img = self.viewer.render_rgb_cam("rgb_array", camera_id, False)
-            return rgb_img
 
     # Normalizes an image so the maximum pixel value is 255,
     # then writes to file

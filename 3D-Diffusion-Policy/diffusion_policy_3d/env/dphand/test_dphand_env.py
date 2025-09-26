@@ -4,11 +4,12 @@ DphandEnvWrapper使用示例
 """
 import numpy as np
 
-from dphand.dphand_env import DphandPickCubeEnv
+from dphand.envs.dphand_pick_and_place_env import DphandPickAndPlaceEnv
 from dphand.mujoco.wrappers import TeleopIntervention
 from diffusion_policy_3d.env.dphand.dphand_wrapper import DphandEnvWrapper
 
 import visualizer
+np.set_printoptions(4)
 
 show_point_cloud = False
 if show_point_cloud:
@@ -17,13 +18,12 @@ if show_point_cloud:
 
 def main():
     """主函数: 演示wrapper的基本用法"""
-    env = DphandPickCubeEnv(render_mode="human", image_obs=True, image_size=256, control_dt=0.02)
+    env = DphandPickAndPlaceEnv(config="dphand_pick_cube_env_cfg", render_mode="human")
     env = TeleopIntervention(env, ip="192.168.3.11", test=True, use_relative_pose=True)
     # env = Fix6DPoseWrapper(env, pose=[0, 0, 0.3, -1.5707, 1.5707, 0])  # 固定手腕位置
     # 创建环境wrapper
     env = DphandEnvWrapper(
         env=env,
-        device="cuda:0",  # 或 "cpu"
         use_point_cloud=False,
         num_points=1024
     )
@@ -54,7 +54,6 @@ def main():
 
             # 执行动作
             obs, reward, done, info = env.step(action)
-
             total_reward += reward
             step_count += 1
 
