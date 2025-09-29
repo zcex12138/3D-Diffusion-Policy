@@ -61,7 +61,7 @@ def point_cloud_sampling(point_cloud:np.ndarray, num_points:int, method:str='fps
         return point_cloud
     
     if point_cloud.shape[0] <= num_points:
-        cprint(f"warning: point cloud has {point_cloud.shape[0]} points, but we want to sample {num_points} points", 'yellow')
+        # cprint(f"warning: point cloud has {point_cloud.shape[0]} points, but we want to sample {num_points} points", 'yellow')
         # pad with zeros
         point_cloud_dim = point_cloud.shape[-1]
         point_cloud = np.concatenate([point_cloud, np.zeros((num_points - point_cloud.shape[0], point_cloud_dim))], axis=0)

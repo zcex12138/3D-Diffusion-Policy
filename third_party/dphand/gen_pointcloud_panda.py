@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
 """
-后处理脚本: 从RGB和深度图像生成点云数据
+后处理脚本：从RGB和深度图像生成点云数据
 用于在数据收集完成后批量生成点云，提高数据收集效率
 """
 
@@ -13,6 +14,143 @@ from diffusion_policy_3d.gym_util_dphand.mjpc_wrapper import point_cloud_samplin
 from dphand.envs.panda_pick_and_place_env import PandaPickAndPlaceEnv
 import visualizer
 import cv2
+
+
+def test_playback_images(zarr_path):
+    """
+    简单的测试函数：播放存储的RGB和深度图像
+    """
+    cprint(f"开始播放图像: {zarr_path}", "yellow")
+    
+    # 读取zarr文件
+    zarr_root = zarr.open(zarr_path, mode='r')
+    
+    # 读取RGB和深度数据
+    rgb_arrays = zarr_root['data']['img'][:]
+    depth_arrays = zarr_root['data']['depth'][:]
+    
+    cprint(f"读取到 {len(rgb_arrays)} 个RGB图像", "green")
+    cprint(f"读取到 {len(depth_arrays)} 个深度图像", "green")
+    
+    # 创建窗口
+    cv2.namedWindow('RGB + Depth', cv2.WINDOW_NORMAL)
+    
+    # 播放图像
+    for i in range(len(rgb_arrays)):
+        rgb_img = rgb_arrays[i]
+        depth_img = depth_arrays[i]
+        
+        # 处理深度图像显示
+        depth_normalized = depth_img.copy()
+        if depth_normalized.max() > depth_normalized.min():
+            depth_normalized = (depth_normalized - depth_normalized.min()) / (depth_normalized.max() - depth_normalized.min()) * 255
+        depth_uint8 = depth_normalized.astype(np.uint8)
+        depth_colored = cv2.applyColorMap(depth_uint8, cv2.COLORMAP_JET)
+        
+        # 调整图像大小以匹配
+        target_size = (rgb_img.shape[1], rgb_img.shape[0])
+        depth_resized = cv2.resize(depth_colored, target_size)
+        
+        # 水平拼接RGB和深度图像
+        combined_img = np.concatenate([rgb_img, depth_resized], axis=1)
+        
+        # 添加帧信息
+        frame_text = f"Frame: {i}/{len(rgb_arrays)-1}"
+        cv2.putText(combined_img, frame_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        
+        cv2.imshow('RGB + Depth', combined_img)
+        
+        # 按任意键继续，按'q'退出
+        key = cv2.waitKey(0) & 0xFF
+        if key == ord('q'):
+            break
+    
+    cv2.destroyAllWindows()
+    cprint("播放结束", "green")
+
+
+def save_frame(rgb_arrays, depth_arrays, frame_idx, save_count, show_rgb, show_depth):
+    """保存当前帧"""
+    save_dir = "saved_frames"
+    os.makedirs(save_dir, exist_ok=True)
+    
+    if show_rgb:
+        rgb_img = rgb_arrays[frame_idx]
+        rgb_path = os.path.join(save_dir, f"frame_{save_count:03d}_rgb.png")
+        cv2.imwrite(rgb_path, rgb_img)
+        cprint(f"保存RGB图像: {rgb_path}", "green")
+    
+    if show_depth and depth_arrays is not None:
+        depth_img = depth_arrays[frame_idx]
+        depth_normalized = depth_img.copy()
+        if depth_normalized.max() > depth_normalized.min():
+            depth_normalized = (depth_normalized - depth_normalized.min()) / (depth_normalized.max() - depth_normalized.min()) * 255
+        depth_uint8 = depth_normalized.astype(np.uint8)
+        depth_colored = cv2.applyColorMap(depth_uint8, cv2.COLORMAP_JET)
+        
+        depth_path = os.path.join(save_dir, f"frame_{save_count:03d}_depth.png")
+        cv2.imwrite(depth_path, depth_colored)
+        cprint(f"保存深度图像: {depth_path}", "green")
+
+
+
+
+
+def check_depth_quality(depth_img, min_valid_ratio=0.1):
+    """
+    检查深度图像质量
+    """
+    valid_pixels = (depth_img > 0) & (depth_img < 10.0)  # 假设深度范围0-10米
+    valid_ratio = np.sum(valid_pixels) / depth_img.size
+    
+    if valid_ratio < min_valid_ratio:
+        print(f"Warning: Low depth quality, valid ratio: {valid_ratio:.3f}")
+        return False
+    return True
+
+def point_cloud_sampling_fixed(point_cloud: np.ndarray, num_points: int, method: str = 'uniform'):
+    """
+    修复版本的点云采样函数，避免零填充
+    """
+    if num_points == 'all':
+        return point_cloud
+    
+    if point_cloud.shape[0] <= num_points:
+        # 使用重复采样而不是零填充
+        if point_cloud.shape[0] == 0:
+            # 如果点云为空，返回默认点云
+            return np.array([[0.1, 0.1, 0.1, 0, 0, 0]] * num_points)
+        
+        # 重复采样现有点
+        repeat_times = num_points // point_cloud.shape[0]
+        remainder = num_points % point_cloud.shape[0]
+        
+        repeated_cloud = np.tile(point_cloud, (repeat_times, 1))
+        if remainder > 0:
+            additional_indices = np.random.choice(point_cloud.shape[0], remainder, replace=True)
+            additional_points = point_cloud[additional_indices]
+            repeated_cloud = np.concatenate([repeated_cloud, additional_points], axis=0)
+        
+        return repeated_cloud
+    
+    # 正常采样逻辑
+    if method == 'uniform':
+        sampled_indices = np.random.choice(point_cloud.shape[0], num_points, replace=False)
+        return point_cloud[sampled_indices]
+    elif method == 'fps':
+        # FPS采样逻辑保持不变
+        import torch
+        import pytorch3d.ops as torch3d_ops
+        
+        point_cloud_tensor = torch.from_numpy(point_cloud).unsqueeze(0).cuda()
+        num_points_tensor = torch.tensor([num_points]).cuda()
+        _, sampled_indices = torch3d_ops.sample_farthest_points(
+            points=point_cloud_tensor[..., :3], K=num_points_tensor)
+        point_cloud = point_cloud_tensor.squeeze(0).cpu().numpy()
+        return point_cloud[sampled_indices.squeeze(0).cpu().numpy()]
+    else:
+        raise NotImplementedError(f"point cloud sampling method {method} not implemented")
+
 
 def main(args):
     # 读取zarr文件
@@ -49,8 +187,8 @@ def main(args):
     
     # 逐个处理每张图像
     for i in range(len(rgb_arrays)):
-        rgb_img = rgb_arrays[i].copy()
-        depth_img = depth_arrays[i].copy()
+        rgb_img = rgb_arrays[i]
+        depth_img = depth_arrays[i]
         
         if i % 100 == 0:  # 每100张图像打印一次进度
             cprint(f"处理图像 {i}/{len(rgb_arrays)}", "cyan")
@@ -63,8 +201,13 @@ def main(args):
         cv2.waitKey(1)
         
         # 生成点云
-        pc = pc_generator.generatePointCloudFromImages(rgb_arrays[i], depth_arrays[i], use_rgb=True)
-        point_cloud = point_cloud_sampling(pc, args.num_points, method='fps')
+        point_cloud = pc_generator.generatePointCloudFromImages(
+            rgb_img, depth_img, use_rgb=True
+        )
+        
+        
+        # 使用修复版本的采样函数
+        point_cloud = point_cloud_sampling_fixed(point_cloud, args.num_points, method='fps')
         
         all_point_clouds.append(point_cloud)
         

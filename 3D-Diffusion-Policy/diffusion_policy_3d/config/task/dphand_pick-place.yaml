@@ -1,0 +1,39 @@
+name: dphand_pick-place
+
+task_name: ${name}
+
+shape_meta: &shape_meta
+  obs:
+    point_cloud:
+      shape: [1024, 6]
+      type: point_cloud
+    agent_pos:
+      shape: [31]  # 6末端执行器位置 + 22关节角度 + 3物体位置
+      type: low_dim
+    full_state:
+      shape: [70]  # 56 (机器人状态) + 7(物体位置+旋转) = 63
+      type: low_dim
+  action:
+    shape: [28]  # 6末端执行器位置 + 22关节角度
+
+env_runner:
+  _target_: diffusion_policy_3d.env_runner.dphand_runner.DphandRunner
+  eval_episodes: 10
+  max_steps: 300  # 每个episode的最大步数
+  n_obs_steps: ${n_obs_steps}
+  n_action_steps: ${n_action_steps}
+  fps: 10
+  device: ${training.device}
+  use_point_crop: False
+  num_points: 1024
+  render_size: 640
+
+dataset:
+  _target_: diffusion_policy_3d.dataset.dphand_dataset.DphandDataset
+  zarr_path: data/60_demos_Do_31_0919/data_pc.zarr
+  horizon: ${horizon}
+  pad_before: ${eval:'${n_obs_steps}-1'}
+  pad_after: ${eval:'${n_action_steps}-1'}
+  seed: 42
+  val_ratio: 0.02
+  max_train_episodes: 90

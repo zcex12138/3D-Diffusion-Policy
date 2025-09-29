@@ -177,22 +177,34 @@ class DphandPandaEnvWrapper(gym.ObservationWrapper):
         obs_space['full_state'] = spaces.Box(-np.inf, np.inf, (obs_sensor_dim * 2 + 14,), np.float32)
         self.observation_space = spaces.Dict(obs_space)
 
+    def get_point_cloud(self, use_rgb=True):
+        """生成点云数据"""
+        point_cloud, depth = self.pc_generator.generateCroppedPointCloud()
+        if not use_rgb:
+            point_cloud = point_cloud[..., :3]
+        # 裁剪点云
+        # if self.use_point_crop:
+        #     if self.min_bound is not None:
+        #         mask = np.all(point_cloud[:, :3] > self.min_bound, axis=1)
+        #         point_cloud = point_cloud[mask]
+        #     if self.max_bound is not None:
+        #         mask = np.all(point_cloud[:, :3] < self.max_bound, axis=1)
+        #         point_cloud = point_cloud[mask]
+        # 采样点云
+        point_cloud = point_cloud_sampling(point_cloud, self.num_points, 'fps')
+        depth = depth[::-1].copy() # 翻转会导致深度数据内存不连续，需要copy一下
+        return point_cloud, depth
+
     def observation(self, obs):
         """重写observation方法, 在原始观察基础上添加点云数据"""
-        image = obs['image'][self.cam_name]
-        depth = self.pc_generator.captureImage(self.pc_generator.cam_id, capture_depth=True)
-
         if self.use_point_cloud:
             # 生成点云数据
-            point_cloud = self.pc_generator.generatePointCloudFromImages(
-                        color_img=image,
-                        depth=depth,
-                        use_rgb=True
-                    )
-            point_cloud = point_cloud_sampling(point_cloud, self.num_points, 'fps')
+            point_cloud, depth = self.get_point_cloud()
         else:
+            # 不生成点云，设置为零
             point_cloud = np.zeros((self.num_points, 3), dtype=np.float32)
-        
+            # 仍然需要获取深度图像用于其他用途
+            depth = self.pc_generator.captureImage(self.pc_generator.cam_id, capture_depth=True)
 
         new_obs = {}
         # 在原始观察基础上添加新的观察数据

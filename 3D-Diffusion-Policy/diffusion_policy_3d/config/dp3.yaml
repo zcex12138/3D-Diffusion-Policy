@@ -78,15 +78,15 @@ ema:
   max_value: 0.9999
 
 dataloader:
-  batch_size: 256
-  num_workers: 24
+  batch_size: 128
+  num_workers: 8
   shuffle: True
   pin_memory: True
   persistent_workers: False
 
 val_dataloader:
-  batch_size: 256
-  num_workers: 24
+  batch_size: 128
+  num_workers: 8
   shuffle: False
   pin_memory: True
   persistent_workers: False
@@ -108,7 +108,7 @@ training:
   num_epochs: 3000
   gradient_accumulate_every: 1
   use_ema: True
-  rollout_every: 250
+  rollout_every: 500
   checkpoint_every: 200
   val_every: 1
   sample_every: 5
@@ -119,7 +119,7 @@ training:
 logging:
   group: ${exp_name}
   id: null
-  mode: offline
+  mode: online
   name: ${training.seed}
   project: dp3
   resume: False
@@ -127,7 +127,7 @@ logging:
   - dp3
 
 checkpoint:
-  save_ckpt: True # if True, save checkpoint every checkpoint_every
+  save_ckpt: False # if True, save checkpoint every checkpoint_every
   topk:
     monitor_key: test_mean_score
     mode: max
@@ -143,7 +143,7 @@ multi_run:
 hydra:
   job:
     override_dirname: ${name}
-  run: # runtime.output_dir
+  run:
     dir: data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
   sweep:
     dir: data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
