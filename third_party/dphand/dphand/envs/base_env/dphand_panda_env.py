@@ -53,13 +53,13 @@ class DphandPandaEnv(BaseEnv):
         # 除panda外的
         self._dphand_dof_ids = np.arange(
             mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, "Forearm_Wrist-Flexion"),
-            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, "Little-PM_Little-DIP-Flexion") + 1
+            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, "Little-PM_Little-DIP-Flexion")# + 1
         )
         # 验证 id 是否正确
         # mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, self._dphand_dof_ids[0])
         self._dphand_ctrl_ids = np.arange(
             mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, "Wrist"),
-            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, "Little-PD") + 1
+            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, "Little-PD")# + 1
         )
         
         self.ctrl_scale = self.cfg['action']['ctrl_scale']

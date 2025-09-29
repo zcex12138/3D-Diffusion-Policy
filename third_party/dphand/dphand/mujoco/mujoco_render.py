@@ -2,7 +2,6 @@ from gymnasium.envs.mujoco.mujoco_rendering import WindowViewer, OffScreenViewer
 from typing import Optional, Dict, Literal
 import mujoco
 import numpy as np
-import glfw
 
 class OSViewer(OffScreenViewer):
     def __init__(
@@ -29,10 +28,13 @@ class OSViewer(OffScreenViewer):
     ):
         return super().render(render_mode=render_mode,camera_id=camera_id,segmentation=segmentation)
 
-    def render_segment_depth_except_ground(self, camera_id):
+    def render_segment_depth(self, camera_id, geom_id=0):
+        """
+        用于在深度图中过滤 id < geom_id 的物体
+        """
         segment, depth = self.render_rgb_cam(render_mode="rgbd_tuple", camera_id=camera_id, segmentation=True)
-        segment = segment[:, :, 1] > 0
-        depth *= segment
+        segment = segment[:, :, 1] > geom_id
+        depth = depth * segment
         return segment, depth
 
 class Viewer(WindowViewer):

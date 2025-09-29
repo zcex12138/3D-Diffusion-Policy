@@ -146,34 +146,13 @@ class PointCloudGenerator(object):
             rgb_img = self.viewer.render_rgb_cam("rgb_array", camera_id, False)
             return rgb_img
         
-    def generateCroppedPointCloud(self, save_img_dir=None):
-        """
-        生成裁剪后的点云 (单相机版本)
-        """
-        # Render and optionally save image from camera
-        color_img = self.captureImage(self.cam_id, capture_depth=False)
-        depth = self.captureImage(self.cam_id, capture_depth=True)
-        
-        # If directory was provided, save color and depth images
-        if save_img_dir != None:
-            self.saveImg(depth, save_img_dir, "depth_test")
-            self.saveImg(color_img, save_img_dir, "color_test")
-
-        # 使用新的函数生成点云
-        point_cloud = self.generatePointCloudFromImages(
-            color_img=color_img,
-            depth=depth,
-            use_rgb=True
-        )
-        
-        return point_cloud, depth
-     
     # https://github.com/htung0101/table_dome/blob/master/table_dome_calib/utils.py#L160
     def depthimg2Meters(self, depth):
         extent = self.model.stat.extent
         near = self.model.vis.map.znear * extent
         far = self.model.vis.map.zfar * extent
-        image = near / (1 - depth * (1 - near / far))
+        # z-buffer map: depth:[0, 1] -> image:[near, far]
+        image = near / (1 - depth * (1 - near / far)) - near # 为了避免点云中出现大量原点附近的点（占一半以上），需要减去near然后筛掉0的点
         return image
 
     def verticalFlip(self, img):
@@ -238,13 +217,13 @@ class PointCloudGenerator(object):
             rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
                 od_color, od_depth, depth_scale=1.0, depth_trunc=1000.0, convert_rgb_to_intensity=False
             )
-            
+
             # 从RGBD图像创建点云，这样颜色和深度会自动正确对应
             o3d_cloud_with_color = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, od_cammat)
-            
+
             # 应用相同的坐标变换
             transformed_cloud_with_color = o3d_cloud_with_color.transform(c2w)
-            
+
             # 获取带颜色的点云数据
             point_cloud_points = np.asarray(transformed_cloud_with_color.points)
             point_cloud_colors = np.asarray(transformed_cloud_with_color.colors)

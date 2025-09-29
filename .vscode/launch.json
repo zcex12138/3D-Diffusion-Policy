@@ -2,23 +2,64 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Train DP3 - Dphand Pick Place",
+            "name": "Train DP3 - Dphand Pick Place",
             "type": "python",
             "request": "launch",
             "program": "train.py",
             "args": [
                 "--config-name=dp3.yaml",
-                "task=dphand_pick-place",
-                "hydra.run.dir=data/outputs/dphand_pick-place-cube_dp3_0923_Do_31",
-                "training.debug=false",
-                "training.seed=0",
-                "training.device=cuda:0",
-                "exp_name=debug_dphand_pick-place_dp3_0919",
-                "checkpoint.save_ckpt=true"
+                "task=pick_and_place",
+                "exp_name=pick_and_place_0927"
             ],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/3D-Diffusion-Policy",
             "env": {
+                "MUJOCO_GL": "egl",
+                "HYDRA_FULL_ERROR": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+            },
+            "justMyCode": false,
+            "stopOnEntry": false,
+            "python": "${command:python.interpreterPath}"
+        },
+        {
+            "name": "Resume Train DP3 - Dphand Pick Place",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--config-name=dp3.yaml",
+                "task=dphand_panda_pick-place",
+                "hydra.run.dir=data/outputs/2025.09.27/15.22.30_train_dp3_dphand_panda_pick-place",
+                "training.resume=True",
+                "logging.resume=True"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/3D-Diffusion-Policy",
+            "env": {
+                "MUJOCO_GL": "egl",
+                "HYDRA_FULL_ERROR": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+            },
+            "justMyCode": false,
+            "stopOnEntry": false,
+            "python": "${command:python.interpreterPath}"
+        },
+        {
+            "name": "Eval DP3 - Dphand Pick Place",
+            "type": "python",
+            "request": "launch",
+            "program": "eval.py",
+            "args": [
+                "--config-name=dp3.yaml",
+                "task=pick_and_place",
+                "task.env_runner.render_mode=human",
+                "hydra.run.dir=data/outputs/2025.09.27/15.22.30_train_dp3_dphand_panda_pick-place",
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/3D-Diffusion-Policy",
+            "env": {
+                "MUJOCO_GL": "egl",
                 "HYDRA_FULL_ERROR": "1",
                 "CUDA_VISIBLE_DEVICES": "0"
             },
