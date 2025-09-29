@@ -12,7 +12,7 @@ from diffusion_policy_3d.gym_util_dphand.mjpc_wrapper import point_cloud_samplin
 import visualizer
 np.set_printoptions(4)
 
-show_point_cloud = True
+show_point_cloud = False
 if show_point_cloud:
     visualizer_3d = visualizer.RealTime3DVisualizer()
     visualizer_3d.start_visualization(port=5000)
@@ -33,7 +33,7 @@ def main():
     import cv2
     import time
 
-    for episode in range(10):
+    for episode in range(100):
         print(f"\n=== Episode {episode + 1} ===")
 
         total_reward = 0

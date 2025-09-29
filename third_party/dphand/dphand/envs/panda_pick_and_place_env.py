@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Literal
+import mujoco
 
 import numpy as np
 from dphand.mujoco.utils import *
@@ -20,9 +21,28 @@ class PandaPickAndPlaceEnv(DphandPandaEnv):
         
         super().__init__(self.cfg, render_mode)
 
+        self._goal_dist = self.cfg['reset']['goal_dist']
+
     def reset(self, seed=None, **kwargs):
+        """Reset the environment."""
+        # Reset hand to initial position.
+        mujoco.mj_resetDataKeyframe(self.model, self.data, 0)
+        mujoco.mj_forward(self.model, self.data)
+        
+        if self.cfg['reset']['domain_rand']:
+            object_pos_range = self.cfg['reset']['object_pos_range']
+            target_pos_range = self.cfg['reset']['target_pos_range']
+            self.data.jnt("object").qpos[:2] += object_pos_range * np.random.uniform(-1, 1, 2)
+            self.data.jnt("target").qpos[:2] += target_pos_range * np.random.uniform(-1, 1, 2)
+
+        # 运行几个物理步骤让系统稳定
+        for _ in range(5):
+            mujoco.mj_step(self.model, self.data)
+
         self._lift_flag = False
-        return super().reset(seed, **kwargs)
+        self._success_steps = 0
+        self._obs = self._compute_observation()
+        return self._obs, {}
     
     def _get_done(self):
         object_pos = self._obs["state"]["object_pos"]
@@ -30,8 +50,10 @@ class PandaPickAndPlaceEnv(DphandPandaEnv):
         
         goal_dist = np.linalg.norm(object_pos - target_pos)
         # success
-        if goal_dist < 0.1:
-            return True, False, {"success": 1}
+        if goal_dist < self._goal_dist:
+            self._success_steps += 1
+            if self._success_steps >= 20:
+                return True, False, {"success": 1}
         # lift
         if object_pos[2] > 0.05 and not self._lift_flag:
             self._lift_flag = True

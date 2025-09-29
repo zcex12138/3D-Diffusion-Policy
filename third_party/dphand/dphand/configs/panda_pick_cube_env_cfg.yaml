@@ -32,4 +32,7 @@ reward:
 
 reset:
   time_limit: 10.0
-  goal_dist: 0.24
+  goal_dist: 0.08
+  domain_rand: True
+  object_pos_range: 0.08
+  target_pos_range: 0.03

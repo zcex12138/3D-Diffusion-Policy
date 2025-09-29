@@ -1,0 +1,1 @@
+python ./3D-Diffusion-Policy/diffusion_policy_3d/env/dphand/test_env.py

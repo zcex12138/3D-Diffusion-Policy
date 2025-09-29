@@ -8,17 +8,17 @@ shape_meta: &shape_meta
       shape: [1024, 3]
       type: point_cloud
     agent_pos:
-      shape: [31]  # 7末端执行器位置 + 22关节角度 + 3物体位置 但是目前少了一个小拇指
+      shape: [32]  # 7末端执行器位置 + 22关节角度 + 3物体位置
       type: low_dim
     full_state:
-      shape: [63]  # 
+      shape: [65]  # 7末端执行器位置 + 7物体姿态 + 7目标姿态 + 22关节角度 + 22关节速度
       type: low_dim
   action:
     shape: [29]  # 7末端执行器位置 + 22关节角度
 
 env_runner:
   _target_: diffusion_policy_3d.env_runner.panda_runner.DphandPandaRunner
-  eval_episodes: 5
+  eval_episodes: 10
   max_steps: 300  # 每个episode的最大步数
   n_obs_steps: ${n_obs_steps}
   n_action_steps: ${n_action_steps}
@@ -28,7 +28,7 @@ env_runner:
 
 dataset:
   _target_: diffusion_policy_3d.dataset.dphand_dataset.DphandDataset
-  zarr_path: data/panda/panda_pick_and_place_0926_1_with_pointcloud.zarr
+  zarr_path: data/panda/panda_pick_and_place_0929_with_pointcloud.zarr
   horizon: ${horizon}
   pad_before: ${eval:'${n_obs_steps}-1'}
   pad_after: ${eval:'${n_action_steps}-1'}

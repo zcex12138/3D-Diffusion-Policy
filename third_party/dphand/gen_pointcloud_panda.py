@@ -69,7 +69,7 @@ def main(args):
         all_point_clouds.append(point_cloud)
         
         # 可视化（如果启用）
-        visualizer_3d.update_point_cloud(point_cloud)
+        # visualizer_3d.update_point_cloud(point_cloud)
 
     # 转换为numpy数组
     all_point_clouds = np.stack(all_point_clouds, axis=0)
@@ -118,7 +118,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='从RGB和深度图像生成点云数据')
     parser.add_argument('--zarr_path', 
-        default="./3D-Diffusion-Policy/data/panda/panda_pick_and_place_0926_1.zarr", 
+        default="./3D-Diffusion-Policy/data/panda/panda_pick_and_place_0929.zarr", 
         type=str)
     parser.add_argument('--num_points', type=int, default=1024, help='点云采样点数')
     parser.add_argument('--output_path', type=str, default=None, help='输出文件路径')

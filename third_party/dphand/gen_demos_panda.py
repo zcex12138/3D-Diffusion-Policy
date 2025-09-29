@@ -28,7 +28,7 @@ def main(args):
 	os.makedirs(save_dir, exist_ok=True)
 	# 创建环境
 	env = PandaPickAndPlaceEnv(config="panda_pick_cube_env_cfg", render_mode="human")
-	env = TeleopIntervention(env, ip="192.168.3.11", test=True, use_relative_pose=True)
+	env = TeleopIntervention(env, ip="192.168.3.11", test=False, use_relative_pose=True)
 	env = DphandPandaEnvWrapper(
 		env=env,
 		num_points=1024,
@@ -57,6 +57,7 @@ def main(args):
 			size=env.action_space.shape
 		)
 		obs, reward, done, info = env.step(action) # action会由遥操作接口进行修改
+		env.render()
 		img = obs['image']
 		# img2 = obs['image']
 		cv2.imshow('input', img)
@@ -156,16 +157,11 @@ def main(args):
 	cprint(f'full_state shape: {full_state_arrays.shape}, range: [{np.min(full_state_arrays)}, {np.max(full_state_arrays)}]', 'green')
 	cprint(f'action shape: {action_arrays.shape}, range: [{np.min(action_arrays)}, {np.max(action_arrays)}]', 'green')
 	cprint(f'Saved zarr file to {save_dir}', 'green')
-	cprint(f'Note: Point cloud data will be generated in post-processing', 'yellow')
 
-	# clean up
-	del img_arrays, state_arrays, action_arrays, episode_ends_arrays
-	del zarr_root, zarr_data, zarr_meta
-	del env
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--task_name', type=str, default="pick_and_place_0926_2", choices=["pick_and_place"])
+	parser.add_argument('--task_name', type=str, default="pick_and_place_0929", choices=["pick_and_place"])
 	parser.add_argument('--data_dir', type=str, default="/home/yhx/workspace/3D-Diffusion-Policy/3D-Diffusion-Policy/data/panda" )
 	args = parser.parse_args()
 	main(args)
