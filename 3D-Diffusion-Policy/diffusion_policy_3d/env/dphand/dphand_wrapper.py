@@ -202,8 +202,7 @@ class DphandPandaEnvWrapper(gym.ObservationWrapper):
         new_obs['agent_pos'] = np.concatenate([
             obs["state"]["panda/ee_pos"],
             obs["state"]["panda/ee_quat"],
-            obs["state"]["dphand/joint_pos"],
-            obs["state"]["object_pos"]
+            obs["state"]["dphand/joint_pos"]
         ])
 
         # 构建完整状态：包含原有的state部分

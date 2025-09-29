@@ -28,7 +28,7 @@ env_runner:
 
 dataset:
   _target_: diffusion_policy_3d.dataset.dphand_dataset.DphandDataset
-  zarr_path: data/panda/panda_pick_and_place_0929_with_pointcloud.zarr
+  zarr_path: data/0926/panda_pick_and_place_0926_with_pointcloud.zarr
   horizon: ${horizon}
   pad_before: ${eval:'${n_obs_steps}-1'}
   pad_after: ${eval:'${n_action_steps}-1'}
