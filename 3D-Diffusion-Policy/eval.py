@@ -9,14 +9,11 @@ if __name__ == "__main__":
 
 import os
 import hydra
-import torch
-import dill
 from omegaconf import OmegaConf
 import pathlib
 from train import TrainDP3Workspace
 
 OmegaConf.register_new_resolver("eval", eval, replace=True)
-    
 
 @hydra.main(
     version_base=None,
