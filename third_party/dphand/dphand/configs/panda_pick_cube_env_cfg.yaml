@@ -7,7 +7,7 @@ env:
   seed: 0
   image_size: 256
   use_image_obs: True
-  camera: ['input', 'front']
+  camera_names: ['input', 'front', 'wrist']
 
 franka:
   pos_gains: [600.0, 600.0, 600.0]

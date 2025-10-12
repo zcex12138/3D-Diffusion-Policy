@@ -27,13 +27,17 @@ class PandaPickAndPlaceEnv(DphandPandaEnv):
         """Reset the environment."""
         # Reset hand to initial position.
         mujoco.mj_resetDataKeyframe(self.model, self.data, 0)
-        mujoco.mj_forward(self.model, self.data)
         
         if self.cfg['reset']['domain_rand']:
             object_pos_range = self.cfg['reset']['object_pos_range']
             target_pos_range = self.cfg['reset']['target_pos_range']
+            
+            # 随机化object位置
             self.data.jnt("object").qpos[:2] += object_pos_range * np.random.uniform(-1, 1, 2)
             self.data.jnt("target").qpos[:2] += target_pos_range * np.random.uniform(-1, 1, 2)
+        
+        # 在设置完随机位置后调用forward
+        mujoco.mj_forward(self.model, self.data)
 
         # 运行几个物理步骤让系统稳定
         for _ in range(5):

@@ -30,7 +30,7 @@ class BaseEnv(MujocoGymEnv):
             render_mode=render_mode,
         )
 
-        self.cam_names = self.cfg['env']['camera']
+        self.cam_names = self.cfg['env']['camera_names']
         self.cam_ids = dict({
             cam_name: self.model.camera(cam_name).id for cam_name in self.cam_names
         })

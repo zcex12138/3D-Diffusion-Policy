@@ -111,7 +111,8 @@ class DphandPandaEnv(BaseEnv):
         obs["state"]['dphand/joint_vel'] = self.data.qvel[self._dphand_dof_ids].astype(np.float32)
         if self.use_image_obs:
             obs['image'] = {}
-            obs['image']['input'] = self._viewer.render_rgb_cam("rgb_array", self.cam_ids["input"])
+            for cam_name in self.cam_names:
+                obs['image'][cam_name] = self._viewer.render_rgb_cam("rgb_array", self.cam_ids[cam_name])
 
         for obs_key in self.cfg["obs"]["extra_obs_keys"]:
             obs["state"][obs_key] = self.data.sensor(obs_key).data.astype(np.float32)

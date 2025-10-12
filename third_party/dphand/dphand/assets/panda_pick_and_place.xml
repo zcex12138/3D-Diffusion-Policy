@@ -1,7 +1,7 @@
 <mujoco model="Arena">
   <include file="./panda_dphand.xml"/>
 
-  <option timestep=".002"/>
+  <option solver="Newton" timestep=".002"/>
 
   <statistic center="0.3 0 0.4" extent=".8"/>
 
@@ -15,6 +15,7 @@
     <texture type="skybox" builtin="gradient" rgb1=".3 .5 .7" rgb2="0 0 0" width="32" height="512"/>
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
     <material name="grid" texture="grid" texrepeat="2 2" texuniform="true" reflectance="0"/>
+    <mesh name="target" file="./objects/box.stl" scale="0.001 0.001 0.001"/>
   </asset>
 
   <worldbody>
@@ -23,16 +24,16 @@
     <!-- <camera name="input" pos="-0.311 0.886 0.868" xyaxes="-0.835 -0.550 -0.000 0.290 -0.441 0.849"/> -->
     <light pos="0 0.5 4" dir="0 0 -1" diffuse=".6 .6 .6" specular=".6 .6 .6"/>
     <geom name="floor" pos="0 0 0" size="30 30 0.01" type="plane" material="grid"/>
-    <geom name="desk" pos="0 .53 0" type="box" size=".5 .31 .3" rgba=".87 .72 .53 1" friction="1.0 1.0 1.0"/>
+    <geom name="desk" pos="0 .53 0" type="box" size=".5 .31 .3" rgba=".87 .72 .53 1" friction="1.0 0.3 0.5"/>
 
     <body name="object">
       <freejoint name="object"/>
-      <geom name="object" type="box" size=".035 .035 .035" mass="0.2" rgba=".6 .3 .6 1" friction="1.0 0.3 0.5"/>
+      <geom name="object" type="box" size=".025 .025 .025" mass="0.2" rgba=".6 .3 .6 1" friction="1.0 0.3 0.5"/>
     </body>
 
     <body name="target">
       <freejoint name="target"/>
-      <geom name="target" type="box" size=".08 .08 .06" mass="10.0" rgba=".3 .6 .3 1" friction="1.0 1.0 1.0"/>
+      <geom name="target" type="mesh" mesh="target" mass="10.0" rgba=".3 .6 .3 1" friction="1.0 0.3 0.5" solref="0.02 2.0" solimp="0.9 0.95 0.001"/>
       <geom group="3" name="visual_target" pos="0 0 0.06" type="sphere" size=".01" rgba="1 0 0 1" contype="0" conaffinity="0"/>
     </body>
 
@@ -79,7 +80,7 @@
             0 0 0 0 0 0 0
             0
             -.10 .4 0.335 1 0 0 0
-             .15 .4 0.36 1 0 0 0"
+            .15 .4 0.31 1 0 0 0"
     
     ctrl="  0 0 0 0 0 0 0 
             0 0 0 0 0 0 0

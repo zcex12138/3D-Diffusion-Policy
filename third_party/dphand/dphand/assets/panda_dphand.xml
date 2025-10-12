@@ -117,7 +117,7 @@
     <mesh file="franka_emika_panda/assets/link7_7.obj"/>
     <!-- 灵巧手 -->
     <material name="transparent_black" specular="0.5" shininess="0.25" rgba="0.2 0.2 0.2 0.5"  />
-    <material name="black" specular="0.5" shininess="0.25" rgba="0.2 0.2 0.2 0.5"  />
+    <material name="black" specular="0.5" shininess="0.25" rgba="0.2 0.2 0.2 1"  />
     <material name="gray" specular="0.0" shininess="0.5" rgba="0.80848 0.80848 0.80848 1"/>
 
     <mesh name="Wrist" file="dphand/meshes_obj/Wrist.obj" scale="0.001 0.001 0.001" />
@@ -265,7 +265,7 @@
                         <!-- <body name="Forearm" pos="0.1 0.0 0" euler="-1.570796 0 3.14159"> -->
 
                         <body name="Forearm" euler="3.14159 0 1.5708" pos="0.107 0 0.147">
-                            <geom class="plastic" name="Forearm_geom" type="mesh" mesh="Forearm" pos="0 0 0" euler="0 0 0" material="transparent_black" group="4"/>
+                            <!-- <geom class="plastic" name="Forearm_geom" type="mesh" mesh="Forearm" pos="0 0 0" euler="0 0 0" material="transparent_black" group="4"/> -->
                             <inertial mass="1.9453304463125118" pos="-2.6615378024531148e-08 0.009019289013986305 0.0032088635623812897" fullinertia="0.009066690743886285 0.002094541290341062 0.00960327727265748 -6.786222020669816e-09 -1.1843581789473546e-09 8.685478979449512e-05" />
                             
                             <body name="Wrist" pos="-5.329070518200751e-17 0.13654999999999984 -1.7763568394002505e-17" euler="-3.141592653589793 7.41212194690677e-32 -3.141592653589793">
@@ -273,6 +273,7 @@
                                 <geom type="box" pos="0 -0.03 -0.015" size="0.04 0.04 0.03" rgba="0.2 0.2 0.2 0.8"/>
                                 <geom class="plastic" name="Wrist_geom" type="mesh" mesh="Wrist" pos="0 0 0" euler="0 0 0"/>
                                 <inertial mass="0.02656214079320285" pos="-1.69243593868272e-07 0.0016472458767444085 -1.6800554081391377e-06" fullinertia="2.0813142204422996e-06 4.359133919833236e-06 3.936873235039729e-06 -4.4040114384845307e-11 -1.131996854421492e-08 -5.300701354629199e-10" />
+                                <camera name="wrist" pos="0.0 -0.05 0.04" euler="1.5708 0 0" fovy="45"/>
                                 
                                 <body name="Palm" pos="0.01129099357241001 0.07971340504264361 0.043586459565069006" euler="3.141592653589793 -5.645033986231014e-06 -3.141592653589793">
                                     <joint  class="jointconfig" name="Wrist_Wrist-Abduction" type="hinge" axis="5.645033985756887e-06 3.1918911957973315e-16 -0.9999999999840592" pos="0.011290782654479357 -0.06471323301836342 0.033136348187234654" range="-0.872665 0.523599" damping="0.1"/>                     

@@ -8,7 +8,7 @@ from dphand.mujoco.mujoco_render import Viewer, OSViewer
 
 
 class MujocoGymEnv(MujocoEnv):
-    metadata = {"render_modes": ["human", "rgb_array", "depth_array"], "render_fps": 100}
+    metadata = {"render_modes": ["human", "rgb_array", "depth_array"], "render_fps": 50}
     
     def __init__(
         self,
@@ -20,7 +20,7 @@ class MujocoGymEnv(MujocoEnv):
         image_size: int = 128,
         render_mode: Literal["rgb_array", "human"] = "rgb_array"
     ):
-        self.metadata["render_fps"] = np.round(1.0 / control_dt) 
+        # self.metadata["render_fps"] = int(np.round(1.0 / self.dt))
 
         super().__init__(xml_path.as_posix(), 
                          frame_skip=int(control_dt // physics_dt), 
