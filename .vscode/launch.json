@@ -8,11 +8,32 @@
             "program": "train.py",
             "args": [
                 "--config-name=dp3.yaml",
-                "task=pick_and_place_no_block_pos",
-                "exp_name=pick_and_place_0927"
+                "task=pick_and_place_point_cloud",
+                "exp_name=pick_and_place"
             ],
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}/3D-Diffusion-Policy",
+            "cwd": "${workspaceFolder}/",
+            "env": {
+                "MUJOCO_GL": "egl",
+                "HYDRA_FULL_ERROR": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+            },
+            "justMyCode": false,
+            "stopOnEntry": false,
+            "python": "${command:python.interpreterPath}"
+        },
+        {
+            "name": "Train DP - Dphand Pick Place",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--config-name=train_diffusion_unet_hybrid_workspace.yaml",
+                "task=pick_and_place_image",
+                "exp_name=pick_and_place"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/",
             "env": {
                 "MUJOCO_GL": "egl",
                 "HYDRA_FULL_ERROR": "1",
