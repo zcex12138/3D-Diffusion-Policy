@@ -3,9 +3,9 @@ import argparse
 import os
 import zarr
 import numpy as np
-from dphand.envs.panda_pick_and_place_env import PandaPickAndPlaceEnv
+from dphand.envs.pick_and_place_env import PickAndPlaceEnv
 from dphand.mujoco.wrappers import TeleopIntervention
-from diffusion_policy_3d.env import DphandPandaEnvWrapper
+from diffusion_policy_3d.env import DphandEnvWrapper
 from termcolor import cprint
 import copy
 import cv2
@@ -27,9 +27,9 @@ def main(args):
 			return
 	os.makedirs(save_dir, exist_ok=True)
 	# 创建环境
-	env = PandaPickAndPlaceEnv(config="panda_pick_cube_env_cfg", render_mode="human")
+	env = PickAndPlaceEnv(config="pick_cube_env_cfg", render_mode="human")
 	env = TeleopIntervention(env, ip="192.168.3.11", test=False, use_relative_pose=True)
-	env = DphandPandaEnvWrapper(
+	env = DphandEnvWrapper(
 		env=env,
 		num_points=1024,
 		use_point_cloud=False  # 生成点云

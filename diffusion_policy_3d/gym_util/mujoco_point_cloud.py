@@ -105,125 +105,62 @@ def cammat2o3d(cam_mat, width, height):
 # and combines them into point clouds
 """
 Class that renders depth images in MuJoCo, processes depth images from
-    multiple cameras, converts them to point clouds, and processes the point
+    a single camera, converts them to point clouds, and processes the point
     clouds
 """
 class PointCloudGenerator(object):
     """
-    initialization function
-
-    @param sim:       MuJoCo simulation object
-    @param min_bound: If not None, list len(3) containing smallest x, y, and z
-        values that will not be cropped
-    @param max_bound: If not None, list len(3) containing largest x, y, and z
-        values that will not be cropped
+    单相机点云生成器
+    
+    @param model:       MuJoCo model object
+    @param viewer:      MuJoCo viewer object
+    @param cam_name:    相机名称 (字符串)
+    @param img_size:    图像尺寸
     """
-    def __init__(self, sim, cam_names:List, img_size=84):
+    def __init__(self, model, viewer, cam_name, img_size=84, filter_geom_id=0):
         super(PointCloudGenerator, self).__init__()
 
-        self.sim = sim
+        self.model = model
+        self.viewer = viewer
 
         # this should be aligned with rgb
         self.img_width = img_size
         self.img_height = img_size
 
-        self.cam_names = cam_names
+        self.cam_name = cam_name
+        self.filter_geom_id = filter_geom_id
+        # get camera id
+        self.cam_id = self.model.camera(self.cam_name).id
+        fovy = math.radians(self.model.cam_fovy[self.cam_id])
+        f = self.img_height / (2 * math.tan(fovy / 2))
+        cam_mat = np.array(((f, 0, self.img_width / 2), (0, f, self.img_height / 2), (0, 0, 1)))
+        self.cam_mat = cam_mat
+
+    # Render and process an image
+    def captureImage(self, camera_id, capture_depth=True):
+        _, depth = self.viewer.render_segment_depth(camera_id, self.filter_geom_id)
+        if capture_depth:
+            depth = self.depthimg2Meters(depth)
+            return depth
+        else:
+            rgb_img = self.viewer.render_rgb_cam("rgb_array", camera_id, False)
+            return rgb_img
         
-        # List of camera intrinsic matrices
-        self.cam_mats = []
-        
-        for idx in range(len(self.cam_names)):
-            # get camera id
-            cam_id = self.sim.model.camera_name2id(self.cam_names[idx])
-            fovy = math.radians(self.sim.model.cam_fovy[cam_id])
-            f = self.img_height / (2 * math.tan(fovy / 2))
-            cam_mat = np.array(((f, 0, self.img_width / 2), (0, f, self.img_height / 2), (0, 0, 1)))
-            self.cam_mats.append(cam_mat)
-
-    def generateCroppedPointCloud(self, save_img_dir=None, device_id=0):
-        o3d_clouds = []
-        cam_poses = []
-        depths = []
-        for cam_i in range(len(self.cam_names)):
-            # Render and optionally save image from camera corresponding to cam_i
-            color_img, depth = self.captureImage(self.cam_names[cam_i], capture_depth=True, device_id=device_id)
-            depths.append(depth)
-            # If directory was provided, save color and depth images
-            #    (overwriting previous)
-            if save_img_dir != None:
-                self.saveImg(depth, save_img_dir, "depth_test_" + str(cam_i))
-                self.saveImg(color_img, save_img_dir, "color_test_" + str(cam_i))
-
-            # convert camera matrix and depth image to Open3D format, then
-            #    generate point cloud
-            
-            od_cammat = cammat2o3d(self.cam_mats[cam_i], self.img_width, self.img_height)
-            od_depth = o3d.geometry.Image(depth)
-            
-            o3d_cloud = o3d.geometry.PointCloud.create_from_depth_image(od_depth, od_cammat)
-            
-            # od_color = o3d.geometry.Image(color_img)  # Convert the color image to Open3D format                
-            # rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(od_color, od_depth)  # Create an RGBD image
-            # o3d_cloud = o3d.geometry.PointCloud.create_from_rgbd_image(
-            #     rgbd_image,
-            #     od_cammat)
-
-            # Compute world to camera transformation matrix
-            cam_body_id = self.sim.model.cam_bodyid[cam_i]
-            cam_pos = self.sim.model.body_pos[cam_body_id]
-            c2b_r = rotMatList2NPRotMat(self.sim.model.cam_mat0[cam_i])
-            # In MuJoCo, we assume that a camera is specified in XML as a body
-            #    with pose p, and that that body has a camera sub-element
-            #    with pos and euler 0.
-            #    Therefore, camera frame with body euler 0 must be rotated about
-            #    x-axis by 180 degrees to align it with the world frame.
-            b2w_r = quat2Mat([0, 1, 0, 0])
-            c2w_r = np.matmul(c2b_r, b2w_r)
-            c2w = posRotMat2Mat(cam_pos, c2w_r)
-            transformed_cloud = o3d_cloud.transform(c2w)
-            o3d_clouds.append(transformed_cloud)
-
-        combined_cloud = o3d.geometry.PointCloud()
-        for cloud in o3d_clouds:
-            combined_cloud += cloud
-        # get numpy array of point cloud, (position, color)
-        combined_cloud_points = np.asarray(combined_cloud.points)
-        # color is automatically normalized to [0,1] by open3d
-        
-
-        # combined_cloud_colors = np.asarray(combined_cloud.colors)  # Get the colors, ranging [0,1].
-        combined_cloud_colors = color_img.reshape(-1, 3) # range [0, 255]
-        combined_cloud = np.concatenate((combined_cloud_points, combined_cloud_colors), axis=1)
-        depths = np.array(depths).squeeze()
-        return combined_cloud, depths
-
-
-     
     # https://github.com/htung0101/table_dome/blob/master/table_dome_calib/utils.py#L160
     def depthimg2Meters(self, depth):
-        extent = self.sim.model.stat.extent
-        near = self.sim.model.vis.map.znear * extent
-        far = self.sim.model.vis.map.zfar * extent
-        image = near / (1 - depth * (1 - near / far))
+        extent = self.model.stat.extent
+        near = self.model.vis.map.znear * extent
+        far = self.model.vis.map.zfar * extent
+        # z-buffer map: depth:[0, 1] -> image:[near, far]
+        image = near / (1 - depth * (1 - near / far)) - near # 为了避免点云中出现大量原点附近的点（占一半以上），需要减去near然后筛掉0的点
         return image
 
     def verticalFlip(self, img):
         return np.flip(img, axis=0)
 
-    # Render and process an image
-    def captureImage(self, camera_name, capture_depth=True, device_id=0):
-        rendered_images = self.sim.render(self.img_width, self.img_height, camera_name=camera_name, depth=capture_depth, device_id=device_id)
-        if capture_depth:
-            img, depth = rendered_images
-            depth = self.verticalFlip(depth)
-
-            depth_convert = self.depthimg2Meters(depth)
-            img = self.verticalFlip(img)
-            return img, depth_convert
-        else:
-            img = rendered_images
-            # Rendered images appear to be flipped about vertical axis
-            return self.verticalFlip(img)
+    def horizontalFlip(self, img):
+        return np.flip(img, axis=1)
+    
 
     # Normalizes an image so the maximum pixel value is 255,
     # then writes to file
@@ -232,3 +169,134 @@ class PointCloudGenerator(object):
         normalized_image = normalized_image.astype(np.uint8)
         im = PIL_Image.fromarray(normalized_image)
         im.save(filepath + '/' + filename + ".jpg")
+
+    def generatePointCloudFromImages(self, color_img, depth, use_rgb=True):
+        """
+        从现有的color_img和depth生成点云 (单相机版本)
+        
+        Args:
+            color_img: RGB图像 (H, W, 3)
+            depth: 深度图像 (H, W)
+            use_rgb: 是否使用RGB颜色信息
+        
+        Returns:
+            point_cloud: 点云数据 (N, 3) 或 (N, 6) [如果use_rgb=True]
+        """
+        # 获取相机内参矩阵
+        cam_mat = self.cam_mat
+        
+        # 转换相机内参矩阵为Open3D格式
+        od_cammat = cammat2o3d(cam_mat, self.img_width, self.img_height)
+        
+        # 将深度图像转换为Open3D格式
+        od_depth = o3d.geometry.Image(depth)
+        
+        # 从深度图像生成点云
+        o3d_cloud = o3d.geometry.PointCloud.create_from_depth_image(od_depth, od_cammat)
+        
+        # 获取点云坐标
+        point_cloud_points = np.asarray(o3d_cloud.points)
+        
+        # 计算世界坐标系变换矩阵
+        cam_body_id = self.model.cam_bodyid[self.cam_id]  # 使用指定的相机ID
+        cam_pos = self.model.body_pos[cam_body_id]
+        c2b_r = rotMatList2NPRotMat(self.model.cam_mat0[self.cam_id])  # 使用指定的相机ID
+        # MuJoCo相机坐标系到世界坐标系的变换
+        b2w_r = quat2Mat([0, 1, 0, 0])
+        c2w_r = np.matmul(c2b_r, b2w_r)
+        c2w = posRotMat2Mat(cam_pos, c2w_r)
+        
+        # 应用坐标变换
+        transformed_cloud = o3d_cloud.transform(c2w)
+        point_cloud_points = np.asarray(transformed_cloud.points)
+        
+        # 处理颜色信息
+        if use_rgb and color_img is not None:
+            # 正确的方法：使用Open3D的RGBD图像功能来确保颜色和深度的正确对应
+            od_color = o3d.geometry.Image(color_img.astype(np.uint8))
+            rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
+                od_color, od_depth, depth_scale=1.0, depth_trunc=1000.0, convert_rgb_to_intensity=False
+            )
+
+            # 从RGBD图像创建点云，这样颜色和深度会自动正确对应
+            o3d_cloud_with_color = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, od_cammat)
+
+            # 应用相同的坐标变换
+            transformed_cloud_with_color = o3d_cloud_with_color.transform(c2w)
+
+            # 获取带颜色的点云数据
+            point_cloud_points = np.asarray(transformed_cloud_with_color.points)
+            point_cloud_colors = np.asarray(transformed_cloud_with_color.colors)
+            
+            # 将颜色从[0,1]范围转换为[0,255]范围以保持一致性
+            point_cloud_colors = (point_cloud_colors * 255).astype(np.uint8)
+            
+            # 连接位置和颜色信息
+            point_cloud = np.concatenate((point_cloud_points, point_cloud_colors), axis=1)
+        else:
+            # 只返回位置信息
+            point_cloud = point_cloud_points
+        
+        return point_cloud
+
+    def generatePointCloudFromImagesBatch(self, color_images, depth_images, use_rgb=True):
+        """
+        批量从现有的color_img和depth生成点云 (单相机版本)
+        
+        Args:
+            color_images: RGB图像列表 [(H, W, 3), ...]
+            depth_images: 深度图像列表 [(H, W), ...]
+            use_rgb: 是否使用RGB颜色信息
+        
+        Returns:
+            point_clouds: 点云数据列表 [(N, 3) 或 (N, 6), ...]
+        """
+        if len(color_images) != len(depth_images):
+            raise ValueError("color_images和depth_images的长度必须相同")
+        
+        point_clouds = []
+        for i, (color_img, depth) in enumerate(zip(color_images, depth_images)):
+            if i % 100 == 0:
+                print(f"处理进度: {i}/{len(color_images)}")
+            
+            point_cloud = self.generatePointCloudFromImages(
+                color_img, depth, use_rgb=use_rgb
+            )
+            point_clouds.append(point_cloud)
+        
+        return point_clouds
+
+import pytorch3d.ops as torch3d_ops
+import torch
+
+def point_cloud_sampling(point_cloud:np.ndarray, num_points:int, method:str='fps'):
+    """
+    support different point cloud sampling methods
+    point_cloud: (N, 6), xyz+rgb or (N, 3), xyz
+    """
+    if num_points == 'all': # use all points
+        return point_cloud
+    
+    if point_cloud.shape[0] <= num_points:
+        # cprint(f"warning: point cloud has {point_cloud.shape[0]} points, but we want to sample {num_points} points", 'yellow')
+        # pad with zeros
+        point_cloud_dim = point_cloud.shape[-1]
+        point_cloud = np.concatenate([point_cloud, np.zeros((num_points - point_cloud.shape[0], point_cloud_dim))], axis=0)
+        return point_cloud
+
+    if method == 'uniform':
+        # uniform sampling
+        sampled_indices = np.random.choice(point_cloud.shape[0], num_points, replace=False)
+        point_cloud = point_cloud[sampled_indices]
+    elif method == 'fps':
+        # fast point cloud sampling using torch3d
+        point_cloud = torch.from_numpy(point_cloud).unsqueeze(0).cuda()
+        num_points = torch.tensor([num_points]).cuda()
+        # remember to only use coord to sample
+        _, sampled_indices = torch3d_ops.sample_farthest_points(points=point_cloud[...,:3], K=num_points)
+        point_cloud = point_cloud.squeeze(0).cpu().numpy()
+        point_cloud = point_cloud[sampled_indices.squeeze(0).cpu().numpy()]
+    else:
+        raise NotImplementedError(f"point cloud sampling method {method} not implemented")
+
+    return point_cloud

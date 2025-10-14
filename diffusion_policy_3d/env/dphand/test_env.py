@@ -4,10 +4,10 @@ DphandEnvWrapper使用示例
 """
 import numpy as np
 
-from dphand.envs.panda_pick_and_place_env import PandaPickAndPlaceEnv
+from dphand.envs.pick_and_place_env import PickAndPlaceEnv
 from dphand.mujoco.wrappers import TeleopIntervention
-from diffusion_policy_3d.env.dphand.dphand_wrapper import DphandPandaEnvWrapper
-from diffusion_policy_3d.gym_util_dphand.mjpc_wrapper import point_cloud_sampling
+from diffusion_policy_3d.env.dphand.dphand_wrapper import DphandPointCloudEnvWrapper
+from diffusion_policy_3d.gym_util.mujoco_point_cloud import point_cloud_sampling
 
 import visualizer
 np.set_printoptions(4)
@@ -19,10 +19,10 @@ if show_point_cloud:
 
 def main():
     """主函数: 演示wrapper的基本用法"""
-    env = PandaPickAndPlaceEnv(config="panda_pick_cube_env_cfg", render_mode="human")
+    env = PickAndPlaceEnv(config="pick_cube_env_cfg", render_mode="human")
     env = TeleopIntervention(env, ip="192.168.3.11", test=True, use_relative_pose=True)
     # 创建环境wrapper
-    env = DphandPandaEnvWrapper(
+    env = DphandPointCloudEnvWrapper(
         env=env,
         use_point_cloud=True,
         num_points=1024

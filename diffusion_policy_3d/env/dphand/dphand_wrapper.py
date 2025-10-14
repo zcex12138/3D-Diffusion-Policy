@@ -2,11 +2,10 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 from termcolor import cprint
-from diffusion_policy_3d.gym_util_dphand.mujoco_point_cloud import PointCloudGenerator
-from diffusion_policy_3d.gym_util_dphand.mjpc_wrapper import point_cloud_sampling
+from diffusion_policy_3d.gym_util.mujoco_point_cloud import PointCloudGenerator, point_cloud_sampling
 
 
-class DphandEnvWrapper(gym.ObservationWrapper):
+class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
     def __init__(self, env, num_points=1024, use_point_cloud=True):
         super().__init__(env)
         self._viewer = self.env.unwrapped._viewer

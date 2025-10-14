@@ -8,9 +8,8 @@ import os
 import zarr
 import numpy as np
 from termcolor import cprint
-from diffusion_policy_3d.gym_util_dphand.mujoco_point_cloud import PointCloudGenerator
-from diffusion_policy_3d.gym_util_dphand.mjpc_wrapper import point_cloud_sampling
-from dphand.envs.panda_pick_and_place_env import PandaPickAndPlaceEnv
+from diffusion_policy_3d.gym_util.mujoco_point_cloud import PointCloudGenerator, point_cloud_sampling
+from dphand.envs.pick_and_place_env import PickAndPlaceEnv
 import visualizer
 import cv2
 
@@ -30,7 +29,7 @@ def main(args):
     cprint(f"深度图像形状: {depth_arrays.shape}", "green")
     
     # 创建环境来获取相机参数
-    env = PandaPickAndPlaceEnv(config="panda_pick_cube_env_cfg", render_mode="rgb_array")
+    env = PickAndPlaceEnv(config="panda_pick_cube_env_cfg", render_mode="rgb_array")
     
     # 创建点云生成器
     pc_generator = PointCloudGenerator(

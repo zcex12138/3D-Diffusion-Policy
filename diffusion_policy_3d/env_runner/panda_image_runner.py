@@ -5,8 +5,8 @@ import collections
 import tqdm
 from dphand.envs.pick_and_place_env import PickAndPlaceEnv
 from diffusion_policy_3d.env import DphandImageEnvWrapper
-from diffusion_policy_3d.gym_util_dphand.multistep_wrapper import MultiStepWrapper
-from diffusion_policy_3d.gym_util_dphand.video_recording_wrapper import SimpleVideoRecordingWrapper
+from diffusion_policy_3d.gym_util.multistep_wrapper import MultiStepWrapper
+from diffusion_policy_3d.gym_util.video_recording_wrapper import SimpleVideoRecordingWrapper
 
 from diffusion_policy_3d.policy.base_policy import BasePolicy
 from diffusion_policy_3d.common.pytorch_util import dict_apply
@@ -17,7 +17,6 @@ from termcolor import cprint
 class DphandImageRunner(BaseRunner):
     def __init__(self,
                  output_dir,
-                 image_size=84,
                  eval_episodes=20,
                  max_steps=500,
                  n_obs_steps=8,
@@ -25,7 +24,8 @@ class DphandImageRunner(BaseRunner):
                  fps=10,
                  crf=22,
                  tqdm_interval_sec=5.0,
-                 render_mode="rgb_array"
+                 render_mode="rgb_array",
+                 env_config="pick_cube_env_cfg"
                  ):
         super().__init__(output_dir)
 
@@ -34,10 +34,10 @@ class DphandImageRunner(BaseRunner):
                 SimpleVideoRecordingWrapper(
                     DphandImageEnvWrapper(
                         PickAndPlaceEnv(
-                            config="pick_cube_env_cfg" ,
+                            config=env_config ,
                             render_mode=render_mode),
                         ),
-                    steps_per_render=1,
+                    steps_per_render=2,
                     camera_id=1,
                     ),
                 n_obs_steps=n_obs_steps,

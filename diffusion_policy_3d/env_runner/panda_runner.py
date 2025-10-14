@@ -4,9 +4,9 @@ import torch
 import collections
 import tqdm
 from dphand.envs.pick_and_place_env import PickAndPlaceEnv
-from diffusion_policy_3d.env import DphandEnvWrapper
-from diffusion_policy_3d.gym_util_dphand.multistep_wrapper import MultiStepWrapper
-from diffusion_policy_3d.gym_util_dphand.video_recording_wrapper import SimpleVideoRecordingWrapper
+from diffusion_policy_3d.env import DphandPointCloudEnvWrapper
+from diffusion_policy_3d.gym_util.multistep_wrapper import MultiStepWrapper
+from diffusion_policy_3d.gym_util.video_recording_wrapper import SimpleVideoRecordingWrapper
 
 from diffusion_policy_3d.policy.base_policy import BasePolicy
 from diffusion_policy_3d.common.pytorch_util import dict_apply
@@ -37,7 +37,7 @@ class DphandPandaRunner(BaseRunner):
         def env_fn():
             return MultiStepWrapper(
                 SimpleVideoRecordingWrapper(
-                    DphandEnvWrapper(
+                    DphandPointCloudEnvWrapper(
                         PickAndPlaceEnv(config="pick_cube_env_cfg" ,render_mode=render_mode,),
                         num_points=num_points, 
                         use_point_cloud=True

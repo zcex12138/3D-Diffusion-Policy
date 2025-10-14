@@ -14,11 +14,13 @@ shape_meta: &shape_meta
 
 env_runner:
   _target_: diffusion_policy_3d.env_runner.panda_image_runner.DphandImageRunner
+  env_config: "pick_cube_env_cfg"
   eval_episodes: 1
   max_steps: 300  # 每个episode的最大步数
   n_obs_steps: ${n_obs_steps}
   n_action_steps: ${n_action_steps}
   fps: 30
+  render_mode: "rgb_array"
 
 dataset:
   _target_: diffusion_policy_3d.dataset.dphand_dataset.DphandImageDataset

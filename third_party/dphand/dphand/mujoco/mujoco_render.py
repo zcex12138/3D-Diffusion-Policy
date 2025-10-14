@@ -2,6 +2,7 @@ from gymnasium.envs.mujoco.mujoco_rendering import WindowViewer, OffScreenViewer
 from typing import Optional, Dict, Literal
 import mujoco
 import numpy as np
+from typing import Tuple
 
 class OSViewer(OffScreenViewer):
     def __init__(
@@ -19,13 +20,21 @@ class OSViewer(OffScreenViewer):
                          height=img_obs_height, 
                          max_geom=max_geom, 
                          visual_options=visual_options)
-
+        self.img_obs_width = img_obs_width
+        self.img_obs_height = img_obs_height
     def render_rgb_cam(
         self,
         render_mode: Optional[Literal["rgb_array", "depth_array", "rgbd_tuple"]] = None,
         camera_id: Optional[int] = None,
-        segmentation: bool = False
-    ):
+        segmentation: bool = False,
+        size: Optional[Tuple[int, int]] = None
+    ): 
+        if size is not None:
+            self.viewport.width = size[0]
+            self.viewport.height = size[1]
+        else:
+            self.viewport.width = self.img_obs_width
+            self.viewport.height = self.img_obs_height
         return super().render(render_mode=render_mode,camera_id=camera_id,segmentation=segmentation)
 
     def render_segment_depth(self, camera_id, geom_id=0):
@@ -65,7 +74,8 @@ class Viewer(WindowViewer):
     def render_rgb_cam(
             self, render_mode: str,
             camera_id: int = None,
-            segmentation: bool = False
+            segmentation: bool = False,
+            size: Optional[Tuple[int, int]] = None
     ):
         original_cam_id = self.cam.fixedcamid
         original_type = self.cam.type
@@ -92,9 +102,12 @@ class Viewer(WindowViewer):
             mujoco.mjtCatBit.mjCAT_ALL,
             self.scn,
         )
-
-        self.viewport.width = self.img_obs_width
-        self.viewport.height = self.img_obs_height
+        if size is not None:
+            self.viewport.width = size[0]
+            self.viewport.height = size[1]
+        else:
+            self.viewport.width = self.img_obs_width
+            self.viewport.height = self.img_obs_height
         mujoco.mjr_render(self.viewport, self.scn, self.con)
 
         rgb_arr = np.zeros(

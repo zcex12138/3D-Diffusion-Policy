@@ -1,2 +1,2 @@
-from .dphand_wrapper import DphandEnvWrapper, DphandImageEnvWrapper
+from .dphand_wrapper import DphandPointCloudEnvWrapper, DphandImageEnvWrapper
 
