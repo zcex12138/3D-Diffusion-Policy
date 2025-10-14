@@ -4,10 +4,10 @@ DphandEnvWrapper使用示例
 """
 import numpy as np
 
-from dphand.envs.pick_and_place_env import PickAndPlaceEnv
-from dphand.mujoco.wrappers import TeleopIntervention
 from diffusion_policy_3d.env.dphand.dphand_wrapper import DphandPointCloudEnvWrapper
 from diffusion_policy_3d.gym_util.mujoco_point_cloud import point_cloud_sampling
+from dphand_env.envs.pick_and_place_env import PickAndPlaceEnv
+from dphand_env.mujoco.wrappers import TeleopIntervention
 
 import visualizer
 np.set_printoptions(4)
@@ -20,11 +20,11 @@ if show_point_cloud:
 def main():
     """主函数: 演示wrapper的基本用法"""
     env = PickAndPlaceEnv(config="pick_cube_env_cfg", render_mode="human")
-    env = TeleopIntervention(env, ip="192.168.3.11", test=True, use_relative_pose=True)
+    env = TeleopIntervention(env, ip="192.168.3.80", test=True, use_relative_pose=True)
     # 创建环境wrapper
     env = DphandPointCloudEnvWrapper(
         env=env,
-        use_point_cloud=True,
+        use_point_cloud=False,
         num_points=1024
     )
     obs = env.reset()
@@ -60,7 +60,7 @@ def main():
             # 显示图像（如果可用）
             # 转换为BGR格式用于OpenCV显示
             depth = obs['depth'].copy()
-            img = obs['image']
+            img = obs['image']['front']
 
             depth[depth>0] = (depth[depth>0] - depth[depth>0].min()) / (depth[depth>0].max() - depth[depth>0].min() + 1e-8) * 255
             depth_uint8 = depth.astype(np.uint8)
@@ -80,7 +80,7 @@ def main():
                 visualizer_3d.update_point_cloud(point_cloud)
 
             # 打印步数信息
-            if step_count % 100 == 0:
+            if step_count % 10 == 0:
                 print(f"fps: {step_count / (time.time() - start_time):.2f}, step: {step_count}, reward: {reward:.3f}, total_reward: {total_reward:.3f}")
 
             if info['success']:

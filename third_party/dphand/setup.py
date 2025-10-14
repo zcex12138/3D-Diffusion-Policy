@@ -10,7 +10,7 @@ required = [
 ]
 
 setup(
-    name='dphand',
+    name='dphand_env',
     version='0.1.0',
     description='DPHand: A robotic hand environment for diffusion policy learning',
     author='Yu Hexi',

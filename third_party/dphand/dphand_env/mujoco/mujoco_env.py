@@ -4,7 +4,7 @@ from typing import Literal, Optional
 
 import numpy as np
 from gymnasium.envs.mujoco.mujoco_env import MujocoEnv
-from dphand.mujoco.mujoco_render import Viewer, OSViewer
+from dphand_env.mujoco.mujoco_render import Viewer, OSViewer
 
 
 class MujocoGymEnv(MujocoEnv):

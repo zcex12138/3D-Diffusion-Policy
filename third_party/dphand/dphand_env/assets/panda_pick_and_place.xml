@@ -19,8 +19,8 @@
   </asset>
 
   <worldbody>
-    <camera name="input" pos="0.003 1.017 1.005" xyaxes="-1.000 -0.016 0.000 0.009 -0.577 0.817"/>
-    <camera name="front" pos="0.482 -0.207 1.078" xyaxes="0.737 0.676 -0.000 -0.453 0.493 0.743"/>
+    <camera name="front" pos="0.003 1.017 1.005" xyaxes="-1.000 -0.016 0.000 0.009 -0.577 0.817"/>
+    <camera name="visual" pos="0.482 -0.207 1.078" xyaxes="0.737 0.676 -0.000 -0.453 0.493 0.743"/>
     <!-- <camera name="input" pos="-0.311 0.886 0.868" xyaxes="-0.835 -0.550 -0.000 0.290 -0.441 0.849"/> -->
     <light pos="0 0.5 4" dir="0 0 -1" diffuse=".6 .6 .6" specular=".6 .6 .6"/>
     <geom name="floor" pos="0 0 0" size="30 30 0.01" type="plane" material="grid"/>
@@ -28,13 +28,18 @@
 
     <body name="object">
       <freejoint name="object"/>
-      <geom name="object" type="box" size=".025 .025 .025" mass="0.2" rgba=".6 .3 .6 1" friction="1.0 0.3 0.5"/>
+      <geom name="object" type="box" size=".015 .015 .015" mass="0.001" rgba=".6 .3 .6 1" friction="1.0 1.0 1.0"/>
     </body>
 
     <body name="target">
       <freejoint name="target"/>
-      <geom name="target" type="mesh" mesh="target" mass="10.0" rgba=".3 .6 .3 1" friction="1.0 0.3 0.5" solref="0.02 2.0" solimp="0.9 0.95 0.001"/>
-      <geom group="3" name="visual_target" pos="0 0 0.06" type="sphere" size=".01" rgba="1 0 0 1" contype="0" conaffinity="0"/>
+      <!-- <geom name="target" type="mesh" mesh="target" mass="10.0" rgba=".3 .6 .3 1" friction="1.0 0.3 0.5" solref="0.02 2.0" solimp="0.9 0.95 0.001"/> -->
+      <geom name="bottom" type="box" size="0.05 0.05 0.004" pos="0 0 0" rgba=".3 .6 .3 1"/>
+      <geom name="back_wall" type="box" size="0.05 0.004 0.035" pos="0 -0.046 0.035" rgba=".3 .6 .3 1"/>
+      <geom name="front_wall" type="box" size="0.05 0.004 0.035" pos="0 0.046 0.035" rgba=".3 .6 .3 1"/>
+      <geom name="left_wall" type="box" size="0.004 0.05 0.035" pos="-0.046 0 0.035" rgba=".3 .6 .3 1"/>
+      <geom name="right_wall" type="box" size="0.004 0.05 0.035" pos="0.046 0 0.035" rgba=".3 .6 .3 1"/>
+      <geom group="3" name="visual_target" pos="0 0 0.021" type="sphere" size=".01" rgba="1 0 0 1" contype="0" conaffinity="0"/>
     </body>
 
 

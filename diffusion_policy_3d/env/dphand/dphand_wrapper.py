@@ -12,7 +12,7 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
         self.image_size = self.env.unwrapped._image_size
         self.num_points = num_points
         self.use_point_cloud = use_point_cloud
-        self.cam_name = "input"
+        self.cam_names = ["front", "wrist"]
 
         self.use_point_crop = False
 
@@ -20,15 +20,11 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
         self.pc_generator = PointCloudGenerator(
             model=self.env.unwrapped.model, 
             viewer=self._viewer,
-            cam_name=self.cam_name,
+            cam_name=self.cam_names[0],
             img_size=self.image_size,
             filter_geom_id = 1 # 渲染时滤掉 geom_id <= 1 的物体
         )
         
-        # 设置任务边界
-        # x_min, y_min, z_min, x_max, y_max, z_max = TASK_BOUNDS['dphand_pick_cube']
-        # self.min_bound, self.max_bound = [x_min, y_min, z_min], [x_max, y_max, z_max]
-
         # 环境参数
         self.episode_length = self._max_episode_steps = 1000
         self.cur_step = 0
@@ -39,9 +35,12 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
     def _update_observation_space(self):
         """更新观察空间，在原始环境观察基础上添加点云数据"""
         obs_space = {}
-        obs_space['image'] = spaces.Box(0, 255, (self.image_size, self.image_size, 3), np.float32)
-        obs_space['point_cloud'] = spaces.Box(-np.inf, np.inf, (self.num_points, 6), np.float32)  # 修改为6通道以支持RGB颜色
+        obs_space['image'] = spaces.Dict({
+            cam_name: spaces.Box(0, 255, (self.image_size, self.image_size, 3), np.float32)
+            for cam_name in self.cam_names
+        })
         obs_space['depth'] = spaces.Box(0, 255, (self.image_size, self.image_size), np.float32)
+        obs_space['point_cloud'] = spaces.Box(-np.inf, np.inf, (self.num_points, 6), np.float32)  # 修改为6通道以支持RGB颜色
         # 添加机器人状态观察空间（从原始状态中提取）
         obs_sensor_dim = len(self.env.unwrapped._dphand_dof_ids) + 3
         obs_space['agent_pos'] = spaces.Box(-np.inf, np.inf, (obs_sensor_dim,), np.float32)
@@ -51,13 +50,13 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
 
     def observation(self, obs):
         """重写observation方法, 在原始观察基础上添加点云数据"""
-        image = obs['image'][self.cam_name]
-        depth = self.pc_generator.captureImage(self.pc_generator.cam_id, capture_depth=True)
+        image_dict = {cam_name: obs['image'][cam_name] for cam_name in self.cam_names}
 
+        depth = self.pc_generator.captureImage(self.pc_generator.cam_id, capture_depth=True)
         if self.use_point_cloud:
             # 生成点云数据
             point_cloud = self.pc_generator.generatePointCloudFromImages(
-                        color_img=image,
+                        color_img=image_dict[self.cam_names[0]],
                         depth=depth,
                         use_rgb=True
                     )
@@ -67,7 +66,7 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
 
         new_obs = {}
         # 在原始观察基础上添加新的观察数据
-        new_obs['image'] = obs['image'][self.cam_name]
+        new_obs['image'] = image_dict
         new_obs['point_cloud'] = point_cloud
         new_obs['depth'] = depth
         new_obs['agent_pos'] = np.concatenate([
@@ -123,7 +122,7 @@ class DphandImageEnvWrapper(gym.ObservationWrapper):
         super().__init__(env)
         self._viewer = self.env.unwrapped._viewer
         self.image_size = self.env.unwrapped._image_size
-        self.cam_name = "input"
+        self.cam_names = ['front', 'wrist']
 
         # 环境参数
         self.episode_length = self._max_episode_steps = 1000
@@ -135,7 +134,10 @@ class DphandImageEnvWrapper(gym.ObservationWrapper):
     def _update_observation_space(self):
         """更新观察空间，在原始环境观察基础上添加点云数据"""
         obs_space = {}
-        obs_space['image'] = spaces.Box(0, 255, (self.image_size, self.image_size, 3), np.float32)
+        obs_space['image'] = spaces.Dict({
+            cam_name: spaces.Box(0, 255, (self.image_size, self.image_size, 3), np.float32)
+            for cam_name in self.cam_names
+        })
         # 添加机器人状态观察空间（从原始状态中提取）
         obs_sensor_dim = len(self.env.unwrapped._dphand_dof_ids) + 3
         obs_space['agent_pos'] = spaces.Box(-np.inf, np.inf, (obs_sensor_dim,), np.float32)
@@ -144,7 +146,9 @@ class DphandImageEnvWrapper(gym.ObservationWrapper):
     def observation(self, obs):
         """ 重新组装obs字典 """
         new_obs = {}
-        new_obs['image'] = obs['image'][self.cam_name]
+        new_obs['image'] = {
+            cam_name: obs['image'][cam_name] for cam_name in self.cam_names
+        }
         new_obs['agent_pos'] = np.concatenate([
             obs["state"]["panda/ee_pos"],
             obs["state"]["panda/ee_quat"],

@@ -4,9 +4,9 @@ from typing import Any, Literal, Tuple, Dict
 import gymnasium as gym
 import mujoco
 import numpy as np
-from dphand.mujoco.utils import *
+from dphand_env.mujoco.utils import *
 
-from dphand.mujoco.mujoco_env import MujocoGymEnv
+from dphand_env.mujoco.mujoco_env import MujocoGymEnv
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -68,7 +68,9 @@ class BaseEnv(MujocoGymEnv):
     ) -> Tuple[Dict[str, np.ndarray], float, bool, bool, Dict[str, Any]]:
         
         # physics step
+        pre_ctrl = self.data.ctrl.copy()
         for step in range(self._n_steps):
+            # self.data.ctrl = pre_ctrl + (ctrl - pre_ctrl) * step / self._n_steps
             self.data.ctrl = ctrl
             mujoco.mj_step(self.model, self.data)
     

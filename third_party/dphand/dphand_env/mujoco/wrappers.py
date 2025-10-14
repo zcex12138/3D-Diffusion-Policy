@@ -3,7 +3,7 @@ import numpy as np
 from pynput import keyboard
 
 from dphand_teleop.dphand_teleoperator import DPhandTeleoperator
-from dphand.mujoco.utils import *
+from dphand_env.mujoco.utils import *
  
 import mujoco
 

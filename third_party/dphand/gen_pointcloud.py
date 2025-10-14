@@ -9,7 +9,7 @@ import zarr
 import numpy as np
 from termcolor import cprint
 from diffusion_policy_3d.gym_util.mujoco_point_cloud import PointCloudGenerator, point_cloud_sampling
-from dphand.envs.pick_and_place_env import PickAndPlaceEnv
+from dphand_env.envs.pick_and_place_env import PickAndPlaceEnv
 import visualizer
 import cv2
 

@@ -14,9 +14,9 @@ except ImportError as e:
 else:
     MUJOCO_PY_IMPORT_ERROR = None
 
-from dphand.envs.base_env.base_env import BaseEnv
-from dphand.mujoco.utils import *
-from dphand.mujoco.franka_controller import opspace
+from dphand_env.envs.base_env.base_env import BaseEnv
+from dphand_env.mujoco.utils import *
+from dphand_env.mujoco.franka_controller import opspace
 
 class DphandPandaEnv(BaseEnv):
 

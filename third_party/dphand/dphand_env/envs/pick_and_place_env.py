@@ -3,10 +3,10 @@ from typing import Literal
 import mujoco
 
 import numpy as np
-from dphand.mujoco.utils import *
+from dphand_env.mujoco.utils import *
 import yaml
 
-from dphand.envs.base_env.dphand_panda_env import DphandPandaEnv
+from dphand_env.envs.base_env.dphand_panda_env import DphandPandaEnv
 
 _CONFIG_PATH = Path(__file__).parent.parent / "configs"
 
@@ -32,9 +32,13 @@ class PickAndPlaceEnv(DphandPandaEnv):
             object_pos_range = self.cfg['reset']['object_pos_range']
             target_pos_range = self.cfg['reset']['target_pos_range']
             
-            # 随机化object位置
+            # 随机化位置
             self.data.jnt("object").qpos[:2] += object_pos_range * np.random.uniform(-1, 1, 2)
             self.data.jnt("target").qpos[:2] += target_pos_range * np.random.uniform(-1, 1, 2)
+
+        if "init_state" in kwargs:
+            self.data.jnt("object").qpos[:] = kwargs["init_state"][:7]
+            self.data.jnt("target").qpos[:] = kwargs["init_state"][7:]
         
         # 在设置完随机位置后调用forward
         mujoco.mj_forward(self.model, self.data)
@@ -43,6 +47,7 @@ class PickAndPlaceEnv(DphandPandaEnv):
         for _ in range(5):
             mujoco.mj_step(self.model, self.data)
 
+        self._init_state = np.concatenate([self.data.jnt("object").qpos[:].copy(), self.data.jnt("target").qpos[:].copy()])
         self._lift_flag = False
         self._success_steps = 0
         self._obs = self._compute_observation()
@@ -57,17 +62,17 @@ class PickAndPlaceEnv(DphandPandaEnv):
         if goal_dist < self._goal_dist:
             self._success_steps += 1
             if self._success_steps >= 20:
-                return True, False, {"success": 1}
+                return True, False, {"success": 1, "init_state": self._init_state}
         # lift
         if object_pos[2] > 0.05 and not self._lift_flag:
             self._lift_flag = True
         # fall down
         elif object_pos[2] < 0.02 and self._lift_flag:
             self._lift_flag = False
-            return True, False, {"success": 0}
+            return True, False, {"success": 0, "init_state": self._init_state}
         # time out
         truncated = self.time_limit_exceeded()
-        return False, False, {"success": 0}
+        return False, False, {"success": 0, "init_state": self._init_state}
 
 if __name__ == "__main__":
     from dphand.mujoco.wrappers import TeleopIntervention
