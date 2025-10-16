@@ -75,7 +75,7 @@ class PickAndPlaceEnv(DphandPandaEnv):
         return False, False, {"success": 0, "init_state": self._init_state}
 
 if __name__ == "__main__":
-    from dphand.mujoco.wrappers import TeleopIntervention
+    from dphand_env.mujoco.wrappers import TeleopIntervention
     env = PickAndPlaceEnv(config="pick_cube_env_cfg", render_mode="human")
     env = TeleopIntervention(env, ip="192.168.3.11", test=True, use_relative_pose=True)
     env.reset()

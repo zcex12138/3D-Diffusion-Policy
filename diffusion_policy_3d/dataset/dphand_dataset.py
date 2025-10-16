@@ -100,7 +100,7 @@ class DphandDataset(BaseDataset):
 
 class DphandImageDataset(BaseDataset):
     def __init__(self,
-            zarr_path, 
+            zarr_path: str,
             horizon=1,
             pad_before=0,
             pad_after=0,
@@ -110,9 +110,8 @@ class DphandImageDataset(BaseDataset):
             ):
         super().__init__()
         
-        # dphand环境的数据键包括：state, action, point_cloud, img, depth, full_state
         self.replay_buffer = ReplayBuffer.copy_from_path(
-            zarr_path, keys=['state', 'image/front', 'image/wrist', 'action'])
+            zarr_path, keys=['state', 'front', 'wrist', 'action'])
         val_mask = get_val_mask(
             n_episodes=self.replay_buffer.n_episodes, 
             val_ratio=val_ratio,
@@ -153,17 +152,20 @@ class DphandImageDataset(BaseDataset):
         }
         normalizer = LinearNormalizer()
         normalizer.fit(data=data, last_n_dims=1, mode=mode, **kwargs)
-        normalizer['image'] = get_image_range_normalizer()
+        normalizer['front'] = get_image_range_normalizer()
+        normalizer['wrist'] = get_image_range_normalizer()
         return normalizer
 
     def __len__(self) -> int:
         return len(self.sampler)
 
     def _sample_to_data(self, sample):
-        image = np.moveaxis(sample['image'].astype(np.float32),-1,1)/255
+        front = np.moveaxis(sample['front'].astype(np.float32),-1,1)/255
+        wrist = np.moveaxis(sample['wrist'].astype(np.float32),-1,1)/255
         data = {
             'obs': {
-                'image': image, 
+                'front': front, 
+                'wrist': wrist,
                 'agent_pos': sample['state'][:,].astype(np.float32),
             },
             'action': sample['action'].astype(np.float32)

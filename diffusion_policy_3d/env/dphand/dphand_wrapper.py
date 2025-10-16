@@ -134,11 +134,8 @@ class DphandImageEnvWrapper(gym.ObservationWrapper):
     def _update_observation_space(self):
         """更新观察空间，在原始环境观察基础上添加点云数据"""
         obs_space = {}
-        obs_space['image'] = spaces.Dict({
-            cam_name: spaces.Box(0, 255, (self.image_size, self.image_size, 3), np.float32)
-            for cam_name in self.cam_names
-        })
-        # 添加机器人状态观察空间（从原始状态中提取）
+        for cam_name in self.cam_names:
+            obs_space[cam_name] = spaces.Box(0, 255, (self.image_size, self.image_size, 3), np.float32) # image
         obs_sensor_dim = len(self.env.unwrapped._dphand_dof_ids) + 3
         obs_space['agent_pos'] = spaces.Box(-np.inf, np.inf, (obs_sensor_dim,), np.float32)
         self.observation_space = spaces.Dict(obs_space)
@@ -146,9 +143,9 @@ class DphandImageEnvWrapper(gym.ObservationWrapper):
     def observation(self, obs):
         """ 重新组装obs字典 """
         new_obs = {}
-        new_obs['image'] = {
-            cam_name: obs['image'][cam_name] for cam_name in self.cam_names
-        }
+        for cam_name in self.cam_names:
+            new_obs[cam_name] = obs['image'][cam_name]
+
         new_obs['agent_pos'] = np.concatenate([
             obs["state"]["panda/ee_pos"],
             obs["state"]["panda/ee_quat"],

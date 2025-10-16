@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import collections
 import tqdm
-from dphand.envs.pick_and_place_env import PickAndPlaceEnv
+from dphand_env.envs.pick_and_place_env import PickAndPlaceEnv
 from diffusion_policy_3d.env import DphandImageEnvWrapper
 from diffusion_policy_3d.gym_util.multistep_wrapper import MultiStepWrapper
 from diffusion_policy_3d.gym_util.video_recording_wrapper import SimpleVideoRecordingWrapper
@@ -84,7 +84,9 @@ class DphandImageRunner(BaseRunner):
                 with torch.no_grad():
                     obs_dict_input = {}
                     # (H, W, C) -> (C, H, W)
-                    obs_dict_input['image'] = obs_dict['image'].permute(0,3,1,2).unsqueeze(0)
+
+                    obs_dict_input['front'] = obs_dict['front'].permute(0,3,1,2).unsqueeze(0)
+                    obs_dict_input['wrist'] = obs_dict['wrist'].permute(0,3,1,2).unsqueeze(0)
                     obs_dict_input['agent_pos'] = obs_dict['agent_pos'].unsqueeze(0)
                     action_dict = policy.predict_action(obs_dict_input)
 

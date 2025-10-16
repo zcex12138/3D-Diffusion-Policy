@@ -224,7 +224,10 @@ class TrainDiffusionUnetHybridWorkspace(BaseWorkspace):
                     runner_log = env_runner.run(policy)
                     # log all
                     step_log.update(runner_log)
-
+                else:
+                    # 如果没有运行rollout，设置默认的test_mean_score
+                    if 'test_mean_score' not in step_log:
+                        step_log['test_mean_score'] = - train_loss
                 # run validation
                 if (self.epoch % cfg.training.val_every) == 0:
                     with torch.no_grad():
