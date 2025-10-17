@@ -44,6 +44,27 @@
             "python": "${command:python.interpreterPath}"
         },
         {
+            "name": "Train FlowMatching - Dphand Pick Place",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--config-name=fm.yaml",
+                "task=pick_and_place_point_cloud",
+                "exp_name=pick_and_place"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/",
+            "env": {
+                "MUJOCO_GL": "egl",
+                "HYDRA_FULL_ERROR": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+            },
+            "justMyCode": true,
+            "stopOnEntry": false,
+            "python": "${command:python.interpreterPath}"
+        },
+        {
             "name": "Resume Train DP3 - Dphand Pick Place",
             "type": "python",
             "request": "launch",

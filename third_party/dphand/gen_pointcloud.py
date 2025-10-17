@@ -20,7 +20,7 @@ def main(args):
     zarr_root = zarr.open(zarr_path, mode='r')
     
     # 读取RGB和深度数据
-    rgb_arrays = zarr_root['data']['img'][:]
+    rgb_arrays = zarr_root['data']['image']['front'][:]
     depth_arrays = zarr_root['data']['depth'][:]
     
     cprint(f"读取到 {len(rgb_arrays)} 个RGB图像", "green")
@@ -29,13 +29,13 @@ def main(args):
     cprint(f"深度图像形状: {depth_arrays.shape}", "green")
     
     # 创建环境来获取相机参数
-    env = PickAndPlaceEnv(config="panda_pick_cube_env_cfg", render_mode="rgb_array")
+    env = PickAndPlaceEnv(config="pick_cube_env_cfg", render_mode="rgb_array")
     
     # 创建点云生成器
     pc_generator = PointCloudGenerator(
         model=env.model, 
         viewer=env._viewer,
-        cam_name='input',
+        cam_name='front',
         img_size=env.cfg['env']['image_size']
     )
     cprint(f"相机内参矩阵:\n{pc_generator.cam_mat}", "green")
@@ -68,7 +68,7 @@ def main(args):
         all_point_clouds.append(point_cloud)
         
         # 可视化（如果启用）
-        # visualizer_3d.update_point_cloud(point_cloud)
+        visualizer_3d.update_point_cloud(point_cloud)
 
     # 转换为numpy数组
     all_point_clouds = np.stack(all_point_clouds, axis=0)
@@ -88,10 +88,21 @@ def main(args):
     
     # 复制原有数据
     for key in zarr_root['data'].keys():
-        zarr_data.create_dataset(key, data=zarr_root['data'][key][:], 
-                               chunks=zarr_root['data'][key].chunks,
-                               dtype=zarr_root['data'][key].dtype,
-                               compressor=zarr_root['data'][key].compressor)
+        try:
+            source_data = zarr_root['data'][key]
+            # 检查是否是数组还是组
+            if hasattr(source_data, 'shape'):  # 是数组
+                zarr_data.create_dataset(key, data=source_data[:], 
+                                       chunks=source_data.chunks,
+                                       dtype=source_data.dtype,
+                                       compressor=source_data.compressor)
+            else:  # 是组，递归复制
+                zarr_data.create_group(key)
+                # 这里可以添加递归复制组的逻辑，但通常数据都在顶层
+                print(f"Warning: 跳过组 {key}，只复制数组数据")
+        except Exception as e:
+            print(f"Warning: 无法复制 {key}: {e}")
+            continue
     
     # 保存新的点云数据
     compressor = zarr.Blosc(cname='zstd', clevel=3, shuffle=1)
@@ -102,24 +113,28 @@ def main(args):
     
     # 复制元数据
     for key in zarr_root['meta'].keys():
-        zarr_meta.create_dataset(key, data=zarr_root['meta'][key][:],
-                               dtype=zarr_root['meta'][key].dtype,
-                               compressor=zarr_root['meta'][key].compressor)
+        try:
+            source_meta = zarr_root['meta'][key]
+            if hasattr(source_meta, 'shape'):  # 是数组
+                zarr_meta.create_dataset(key, data=source_meta[:],
+                                       dtype=source_meta.dtype,
+                                       compressor=source_meta.compressor)
+            else:
+                print(f"Warning: 跳过元数据组 {key}")
+        except Exception as e:
+            print(f"Warning: 无法复制元数据 {key}: {e}")
+            continue
     
     cprint(f'-'*50, 'cyan')
     cprint(f'点云数据形状: {all_point_clouds.shape}, 范围: [{np.min(all_point_clouds)}, {np.max(all_point_clouds)}]', 'green')
     cprint(f'保存完成: {output_path}', 'green')
 
-    # 清理
-    del env, pc_generator
-    del zarr_root, zarr_output, zarr_data, zarr_meta
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='从RGB和深度图像生成点云数据')
     parser.add_argument('--zarr_path', 
-        default="./3D-Diffusion-Policy/data/panda/panda_pick_and_place_0929.zarr", 
+        default="./data/1014/pick_and_place_47demos_1014.zarr", 
         type=str)
-    parser.add_argument('--num_points', type=int, default=1024, help='点云采样点数')
+    parser.add_argument('--num_points', type=int, default=512, help='点云采样点数')
     parser.add_argument('--output_path', type=str, default=None, help='输出文件路径')
     
     args = parser.parse_args()

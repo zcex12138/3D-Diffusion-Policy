@@ -25,7 +25,7 @@ class DphandDataset(BaseDataset):
         
         # dphand环境的数据键包括：state, action, point_cloud, img, depth, full_state
         self.replay_buffer = ReplayBuffer.copy_from_path(
-            zarr_path, keys=['state', 'image', 'action', 'point_cloud', 'full_state'])
+            zarr_path, keys=['state', 'front', 'wrist', 'action', 'point_cloud', 'full_state'])
         val_mask = get_val_mask(
             n_episodes=self.replay_buffer.n_episodes, 
             val_ratio=val_ratio,

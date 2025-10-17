@@ -12,7 +12,7 @@ from dphand_env.mujoco.wrappers import TeleopIntervention
 import visualizer
 np.set_printoptions(4)
 
-show_point_cloud = False
+show_point_cloud = True
 if show_point_cloud:
     visualizer_3d = visualizer.RealTime3DVisualizer()
     visualizer_3d.start_visualization(port=5000)
@@ -60,7 +60,7 @@ def main():
             # 显示图像（如果可用）
             # 转换为BGR格式用于OpenCV显示
             depth = obs['depth'].copy()
-            img = obs['image']['front']
+            img = obs['front']
 
             depth[depth>0] = (depth[depth>0] - depth[depth>0].min()) / (depth[depth>0].max() - depth[depth>0].min() + 1e-8) * 255
             depth_uint8 = depth.astype(np.uint8)
@@ -74,9 +74,9 @@ def main():
 
             if show_point_cloud:
                 # point_cloud = obs['point_cloud']
-                point_cloud = pc.generatePointCloudFromImages(obs['image'], obs['depth'], use_rgb=True)
-                point_cloud = point_cloud_sampling(point_cloud, 1024, 'fps')
-                # index = (np.abs(point_cloud[:,0])<0.01) & (np.abs(point_cloud[:,1])<0.01) & (np.abs(point_cloud[:,2])<0.01)
+                point_cloud = pc.generatePointCloudFromImages(obs['front'], obs['depth'], use_rgb=True)
+                point_cloud = point_cloud_sampling(point_cloud, 512, 'fps')
+                # index = (np.abs(point_cloud[:,0])<0.001) & (np.abs(point_cloud[:,1])<0.001) & (np.abs(point_cloud[:,2])<0.001)
                 visualizer_3d.update_point_cloud(point_cloud)
 
             # 打印步数信息

@@ -5,7 +5,7 @@ task_name: ${name}
 shape_meta: &shape_meta
   obs:
     point_cloud:
-      shape: [1024, 3]
+      shape: [512, 3]
       type: point_cloud
     agent_pos:
       shape: [29]  # 7末端执行器位置 + 22关节角度
@@ -27,7 +27,7 @@ env_runner:
 
 dataset:
   _target_: diffusion_policy_3d.dataset.dphand_dataset.DphandDataset
-  zarr_path: data/0929/panda_pick_and_place_0929_with_pointcloud.zarr
+  zarr_path: data/1014/pick_and_place_47demos_1014_with_pointcloud.zarr
   horizon: ${horizon}
   pad_before: ${eval:'${n_obs_steps}-1'}
   pad_after: ${eval:'${n_action_steps}-1'}

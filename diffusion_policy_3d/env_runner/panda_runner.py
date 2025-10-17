@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import collections
 import tqdm
-from dphand.envs.pick_and_place_env import PickAndPlaceEnv
+from dphand_env.envs.pick_and_place_env import PickAndPlaceEnv
 from diffusion_policy_3d.env import DphandPointCloudEnvWrapper
 from diffusion_policy_3d.gym_util.multistep_wrapper import MultiStepWrapper
 from diffusion_policy_3d.gym_util.video_recording_wrapper import SimpleVideoRecordingWrapper
@@ -14,10 +14,10 @@ from diffusion_policy_3d.env_runner.base_runner import BaseRunner
 import diffusion_policy_3d.common.logger_util as logger_util
 from termcolor import cprint
 
-import visualizer
+# import visualizer
 
-visualizer_3d = visualizer.RealTime3DVisualizer()
-visualizer_3d.start_visualization(port=5000)
+# visualizer_3d = visualizer.RealTime3DVisualizer()
+# visualizer_3d.start_visualization(port=5000)
 
 class DphandPandaRunner(BaseRunner):
     def __init__(self,
@@ -100,7 +100,7 @@ class DphandPandaRunner(BaseRunner):
 
                 obs, reward, done, info = env.step(action)
                 env.render()
-                visualizer_3d.update_point_cloud(obs['point_cloud'][0])
+                # visualizer_3d.update_point_cloud(obs['point_cloud'][0])
 
                 traj_reward += reward
                 done = np.all(done)
