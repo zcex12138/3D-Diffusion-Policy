@@ -8,13 +8,13 @@ shape_meta: &shape_meta
       shape: [512, 3]
       type: point_cloud
     agent_pos:
-      shape: [29]  # 7末端执行器位置 + 22关节角度
+      shape: [32]  # 7末端执行器位置 + 22关节角度
       type: low_dim
     full_state:
       shape: [65]  # 7末端执行器位置 + 7物体姿态 + 7目标姿态 + 22关节角度 + 22关节速度
       type: low_dim
   action:
-    shape: [29]  # 7末端执行器位置 + 22关节角度
+    shape: [29]  # 7末端执行器位置 + 22关节角度 (matches dataset action dim)
 
 env_runner:
   _target_: diffusion_policy_3d.env_runner.panda_runner.DphandPandaRunner
@@ -27,7 +27,7 @@ env_runner:
 
 dataset:
   _target_: diffusion_policy_3d.dataset.dphand_dataset.DphandDataset
-  zarr_path: data/1014/pick_and_place_47demos_1014_with_pointcloud.zarr
+  zarr_path: data/pick_and_place_47demos_1014_pc_and_pos.zarr
   horizon: ${horizon}
   pad_before: ${eval:'${n_obs_steps}-1'}
   pad_after: ${eval:'${n_action_steps}-1'}
