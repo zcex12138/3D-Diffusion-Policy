@@ -6,16 +6,15 @@ import os
 import sys
 import numpy as np
 
-# _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-# _REPO_ROOT = os.path.abspath(os.path.join(_THIS_DIR, "..", "..", ".."))
-# _THIRD_PARTY = os.path.join(_REPO_ROOT, "third_party")
-# _THIRD_PARTY_DPHAND = os.path.join(_THIRD_PARTY, "dphand")
-# _THIRD_PARTY_DPHAND_TELEOP = os.path.join(_THIRD_PARTY, "dphand-teleop")
-# for path in (_REPO_ROOT, _THIRD_PARTY_DPHAND, _THIRD_PARTY_DPHAND_TELEOP):
-#     if path not in sys.path and os.path.isdir(path):
-#         sys.path.insert(0, path)
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.abspath(os.path.join(_THIS_DIR, "..", "..", ".."))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-from diffusion_policy_3d.env.dphand.dphand_wrapper import DphandPointCloudEnvWrapper
+try:
+    from diffusion_policy_3d.env.dphand.dphand_wrapper import DphandPointCloudEnvWrapper
+except ImportError:
+    from diffusion_policy_3d.env.dphand.dphand_wrapper import DphandPandaEnvWrapper as DphandPointCloudEnvWrapper
 from diffusion_policy_3d.gym_util.mujoco_point_cloud import point_cloud_sampling
 from dphand_env.envs.pick_and_place_env import PickAndPlaceEnv
 from dphand_env.mujoco.wrappers import TeleopIntervention
@@ -44,29 +43,6 @@ def main():
     import cv2
     import time
 
-    tip_cam_names = [
-        "thumb_tip_cam",
-        "index_tip_cam",
-        "middle_tip_cam",
-        "ring_tip_cam",
-        "little_tip_cam",
-    ]
-
-    def depth_to_uint8(depth):
-        valid = depth > 0
-        depth_scaled = np.zeros_like(depth, dtype=np.float32)
-        d_min = 0.0
-        d_max = 0.0
-        if np.any(valid):
-            d = depth[valid].astype(np.float32)
-            d_min = float(d.min())
-            d_max = float(d.max())
-            denom = (d_max - d_min) + 1e-8
-            depth_scaled[valid] = (d - d_min) / denom * 255.0
-        depth_uint8 = depth_scaled.astype(np.uint8)
-        depth_uint8 = cv2.cvtColor(depth_uint8, cv2.COLOR_GRAY2BGR)
-        return depth_uint8, d_min, d_max
-
     for episode in range(100):
         print(f"\n=== Episode {episode + 1} ===")
 
@@ -93,26 +69,16 @@ def main():
 
             # 显示图像（如果可用）
             # 转换为BGR格式用于OpenCV显示
-            tip_depth_imgs = []
-            for cam_name in tip_cam_names:
-                _, depth = env.unwrapped._viewer.render_segment_depth(env.unwrapped.cam_ids[cam_name])
-                depth_uint8, d_min, d_max = depth_to_uint8(depth)
-                cv2.putText(
-                    depth_uint8,
-                    cam_name,
-                    (5, 15),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.4,
-                    (0, 255, 0),
-                    1,
-                    cv2.LINE_AA,
-                )
-                print(f"{cam_name} depth min: {d_min:.4f}, max: {d_max:.4f}")
-                tip_depth_imgs.append(depth_uint8)
+            # depth = obs['depth'].copy()
+            _, depth = env.unwrapped._viewer.render_segment_depth(env.unwrapped.cam_ids["little_tip_cam"], width=env.unwrapped.image_size, height=env.unwrapped.image_size)
+            img = obs['front']
 
-            tip_depth_viz = np.concatenate(tip_depth_imgs, axis=1)
-            cv2.imshow('front_rgb', obs['front'])
-            cv2.imshow('tip_depths', tip_depth_viz)
+            depth[depth>0] = (depth[depth>0] - depth[depth>0].min()) / (depth[depth>0].max() - depth[depth>0].min() + 1e-8) * 255
+            depth_uint8 = depth.astype(np.uint8)
+            depth_uint8 = cv2.cvtColor(depth_uint8, cv2.COLOR_GRAY2BGR)
+            
+            all_img = np.concatenate([img, depth_uint8], axis=0)
+            cv2.imshow('all', all_img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
             env.render()

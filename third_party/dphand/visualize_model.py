@@ -2,7 +2,7 @@ import mujoco
 import mujoco.viewer
 from pynput import keyboard
 
-model = mujoco.MjModel.from_xml_path("third_party/dphand/dphand_env/assets/panda_dphand_with_tip_camera.xml")  # 改成你的xml路径
+model = mujoco.MjModel.from_xml_path("/home/robot/Workspace/3D-Diffusion-Policy/third_party/dphand/dphand_env/assets/panda_dphand_with_tip_camera.xml")  # 改成你的xml路径
 data = mujoco.MjData(model)
 
 def _start_escape_listener(viewer):

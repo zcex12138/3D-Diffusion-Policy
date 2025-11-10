@@ -1,5 +1,5 @@
 <mujoco model="Arena">
-  <include file="./panda_dphand.xml"/>
+  <include file="./panda_dphand_with_tip_camera.xml"/>
 
   <option solver="Newton" timestep=".002"/>
 

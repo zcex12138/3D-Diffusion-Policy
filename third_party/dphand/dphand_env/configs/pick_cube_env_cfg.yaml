@@ -7,7 +7,7 @@ env:
   seed: 0
   image_size: 84
   use_image_obs: True
-  camera_names: ['front', 'wrist']
+  camera_names: ['front', 'wrist', 'thumb_tip_cam', 'index_tip_cam', 'middle_tip_cam', 'ring_tip_cam', 'little_tip_cam']
 
 franka:
   pos_gains: [600.0, 600.0, 600.0]

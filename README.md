@@ -17,3 +17,13 @@ _, depth = env.unwrapped._viewer.render_segment_depth(env.unwrapped.cam_ids["fro
 - `BaseEnv`: 继承自 `MujocoGymEnv`，主要有两点变化：1.支持从config文件中读取环境参数；2.支持运行多个物理步 # 可以考虑把这个环境和`DphandPandaEnv`合并，因为`dphand_env`已经弃用（这个环境是为之前没有franka panda的时候写的）
 - `DphandPandaEnv`: 继承自 `BaseEnv`，主要添加了灵巧手和franka panda相关的属性，包括franka panda的阻抗控制器
 - `PickAndPlaceEnv`: 继承自 `DphandPandaEnv`，面向任务级别的环境，例如pick and place
+
+tactile sensor : depth<=0.5mm
+
+generate zarr:/home/robot/Workspace/3D-Diffusion-Policy/third_party/dphand/gen_pointcloud.py
+
+<!-- use uv to implement the xense package -->
+
+then find methods to construct an encoder or two encoders for point cloud and tactile img
+
+

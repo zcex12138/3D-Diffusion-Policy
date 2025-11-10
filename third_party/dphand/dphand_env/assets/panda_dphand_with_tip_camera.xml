@@ -44,6 +44,10 @@
       <position kp="0.2" dampratio="0.9" ctrlrange="-0.610865 0.610865" forcerange="-20.45 20.45" />
     </default>   
 
+    <default class="tip_camera">
+      <camera pos="0 -0.003 -0.02" fovy="0.02" quat="0.7071068 0.7071068 0 0" />
+    </default>
+
   </default>
 
 
@@ -291,7 +295,7 @@
                                                     <joint class="jointconfig" name="Thumb-PM_Thumb-DIP-Flexion" type="hinge" axis="0.9999993741212571 -1.9773343351570105e-08 2.7577506855891443e-07" pos="0.007500185506918168 -1.0135717486668694e-08 -0.005999648442277302" range="0 1.22173" />
                                                     <geom class="plastic" name="Thumb-PD_geom" type="mesh" mesh="Thumb-PD" pos="0 0 0" euler="0 0 0" />
                                                     <inertial mass="0.008221233655296712" pos="4.78256383562841e-06 -0.001059520123761583 -0.014235123790328312" fullinertia="5.898243383359009e-07 6.159934754370924e-07 2.2995080143593457e-07 -4.951643830232875e-11 -3.519078467407562e-10 -5.015937733979458e-08" />
-                                                    <camera name="thumb_tip_cam" orthographic="true" pos="0 0.005 -0.02" quat="0.7071068 0.7071068 0 0" fovy="0.1" />
+                                                    <camera class="tip_camera" name="thumb_tip_cam" orthographic="true" />
 
                                                 </body>
                                             </body>
@@ -317,7 +321,7 @@
                                                     <joint class="jointconfig" name="Index-PM_Index-DIP-Flexion" type="hinge" axis="1.000000156118477 1.9401617001212545e-12 8.852539465364906e-08" pos="0.007500340150546129 -4.768566481272736e-07 -0.005999444697657891" range="0 1.22173" />
                                                     <geom class="plastic" name="Index-PD_geom" type="mesh" mesh="Index-PD" pos="0 0 0" euler="0 0 0" />
                                                     <inertial mass="0.008221233655296712" pos="4.782563835702136e-06 -0.0010595201237615741 -0.014235123790328466" fullinertia="5.898243383354302e-07 6.159934754366981e-07 2.2995080143603772e-07 -4.951643833947085e-11 -3.519078468321299e-10 -5.0159377339789395e-08" />
-                                                    <camera name="index_tip_cam" pos="0 0.005 -0.02" fovy="0.1" orthographic="true" quat="0.7071068 0.7071068 0 0" />
+                                                    <camera class="tip_camera" name="index_tip_cam" orthographic="true" />
                                                 </body>
                                             </body>
                                         </body>
@@ -342,7 +346,7 @@
                                                     <joint class="jointconfig" name="Middle-PM_Middle-DIP-Flexion" type="hinge" axis="0.9999999999999903 1.224644308819821e-15 2.567118716420166e-15" pos="0.007500023862299049 1.719771129834434e-07 -0.0060002623616039015" range="0 1.22173" />
                                                     <geom class="plastic" name="Middle-PD_geom" type="mesh" mesh="Middle-PD" pos="0 0 0" euler="0 0 0" />
                                                     <inertial mass="0.008221233655296712" pos="4.782563835693732e-06 -0.0010595201237615774 -0.014235123790328407" fullinertia="5.8982433833592e-07 6.159934754369468e-07 2.2995080143610427e-07 -4.9516438339518763e-11 -3.5190784665454645e-10 -5.0159377339798586e-08" />
-                                                    <camera name="middle_tip_cam" pos="0 0.005 -0.02" fovy="0.1" orthographic="true" quat="0.7071068 0.7071068 0 0" />
+                                                    <camera class="tip_camera" name="middle_tip_cam" orthographic="true" />
                                                 </body>
                                             </body>
                                         </body>
@@ -367,7 +371,7 @@
                                                     <joint class="jointconfig" name="Ring-PM_Ring-DIP-Flexion" type="hinge" axis="1.0000001561184741 1.922076924128159e-12 -8.852538432857493e-08" pos="0.0074997407780687895 -1.7943064091345823e-07 -0.005999871204416982" range="0 1.22173" />
                                                     <geom class="plastic" name="Ring-PD_geom" type="mesh" mesh="Ring-PD" pos="0 0 0" euler="0 0 0" />
                                                     <inertial mass="0.008221233655296712" pos="4.782563835709075e-06 -0.0010595201237615654 -0.014235123790328317" fullinertia="5.898243383363355e-07 6.159934754374612e-07 2.299508014361174e-07 -4.951643834537826e-11 -3.5190784669062244e-10 -5.015937733981168e-08" />
-                                                    <camera name="ring_tip_cam" pos="0 0.005 -0.02" fovy="0.1" orthographic="true" quat="0.7071068 0.7071068 0 0" />
+                                                    <camera class="tip_camera" name="ring_tip_cam" orthographic="true" />
                                                 </body>
                                             </body>
                                         </body>
@@ -392,7 +396,7 @@
                                                     <joint class="jointconfig" name="Little-PM_Little-DIP-Flexion" type="hinge" axis="0.9999997134398901 3.23144228287994e-12 -3.320347256030587e-07" pos="0.007500029952810935 -8.418228709658533e-08 -0.006000154141074002" range="0 1.22173" />
                                                     <geom class="plastic" name="Little-PD_geom" type="mesh" mesh="Little-PD" pos="0 0 0" euler="0 0 0" />
                                                     <inertial mass="0.008221233655296712" pos="4.78256383570734e-06 -0.001059520123761557 -0.014235123790328267" fullinertia="5.898243383361532e-07 6.159934754376649e-07 2.2995080143613193e-07 -4.951643834013244e-11 -3.519078466670908e-10 -5.015937733978922e-08" />
-                                                    <camera name="little_tip_cam" pos="0 0.005 -0.02" fovy="0.1" orthographic="true" quat="0.7071068 0.7071068 0 0" />
+                                                    <camera class="tip_camera" name="little_tip_cam" orthographic="true" />
 
                                                 </body>
                                             </body>
