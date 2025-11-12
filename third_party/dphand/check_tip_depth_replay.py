@@ -39,7 +39,7 @@ TIP_CAM_NAMES = [
 ]
 
 
-def depth_to_uint8(depth: np.ndarray, max_depth: float = 7e-5) -> np.ndarray:
+def depth_to_uint8(depth: np.ndarray, max_depth: float = 0.000005) -> np.ndarray:
     """Convert MuJoCo depth map to a uint8 BGR visualization."""
     depth_scaled = np.zeros_like(depth, dtype=np.float32)
     valid = (depth > 0) & (depth <= max_depth)
@@ -155,6 +155,7 @@ class TipDepthReplayChecker:
                     _, depth = self.env.unwrapped._viewer.render_segment_depth(
                         self.env.unwrapped.cam_ids[cam]
                     )
+                    depth = self._depthimg2meters(depth)
                     live_tip_imgs[cam] = depth_to_uint8(depth)
                     stored_tip_imgs[cam] = ensure_uint8(self.tip_depth_arrays[cam][step_idx])
 
@@ -207,6 +208,14 @@ class TipDepthReplayChecker:
 
         cv2.destroyAllWindows()
         print("Visualization complete.")
+    
+    def _depthimg2meters(self, depth: np.ndarray) -> np.ndarray:
+        """Convert MuJoCo depth buffer [0,1] to metric distances for fair comparison."""
+        model = self.env.unwrapped.model
+        extent = model.stat.extent
+        near = model.vis.map.znear * extent
+        far = model.vis.map.zfar * extent
+        return near / (1 - depth * (1 - near / far)) - near
 
 
 def main():

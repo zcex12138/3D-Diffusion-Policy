@@ -27,3 +27,4 @@ generate zarr:/home/robot/Workspace/3D-Diffusion-Policy/third_party/dphand/gen_p
 then find methods to construct an encoder or two encoders for point cloud and tactile img
 
 
+RESNET

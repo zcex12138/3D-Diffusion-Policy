@@ -1,0 +1,40 @@
+name: dphand_panda_pick-place_tactile
+
+task_name: ${name}
+
+shape_meta: &shape_meta
+  obs:
+    point_cloud:
+      shape: [512, 3]
+      type: point_cloud
+    agent_pos:
+      shape: [29]
+      type: low_dim
+    full_state:
+      shape: [65]
+      type: low_dim
+    tip_depth:
+      shape: [5, 84, 84]  # 5 fingertip cameras, single-channel depth per cam
+      type: depth
+  action:
+    shape: [29]
+
+env_runner:
+  _target_: diffusion_policy_3d.env_runner.panda_runner.DphandPandaRunner
+  eval_episodes: 1
+  max_steps: 300
+  n_obs_steps: ${n_obs_steps}
+  n_action_steps: ${n_action_steps}
+  fps: 30
+  num_points: 1024
+
+dataset:
+  _target_: diffusion_policy_3d.dataset.dphand_dataset.DphandDataset
+  zarr_path: data/1014/pick_and_place_47demos_1014_pc_tip_gray.zarr
+  use_tip_depth: true
+  horizon: ${horizon}
+  pad_before: ${eval:'${n_obs_steps}-1'}
+  pad_after: ${eval:'${n_action_steps}-1'}
+  seed: 42
+  val_ratio: 0.02
+  max_train_episodes: 90

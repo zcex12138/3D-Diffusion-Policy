@@ -1,0 +1,41 @@
+defaults:
+  - dp3
+  - override /task: pick_and_place_tactile
+  - _self_
+
+_target_: diffusion_policy_3d.workspace.train_dp3_tictile_workspace.TrainDP3TictileWorkspace
+
+name: train_dp3_tictile
+exp_name: tactile_dp3
+task_name: ${task.name}
+shape_meta: ${task.shape_meta}
+
+task:
+  dataset:
+    use_tip_depth: true
+    tip_cam_names:
+      - thumb_tip_cam
+      - index_tip_cam
+
+policy:
+  shape_meta: ${shape_meta}
+  tactile_encoder_cfg:
+    backbone: resnet18
+    output_dim: 128
+    pretrained: false
+    freeze_backbone: false
+    in_channels: ${eval:'len(${task.dataset.tip_cam_names})'}
+
+dataloader:
+  batch_size: 16
+  num_workers: 4
+  shuffle: True
+  pin_memory: True
+  persistent_workers: False
+
+val_dataloader:
+  batch_size: 16
+  num_workers: 4
+  shuffle: False
+  pin_memory: True
+  persistent_workers: False

@@ -36,6 +36,7 @@ class DP3(BasePolicy):
             use_pc_color=False,
             pointnet_type="pointnet",
             pointcloud_encoder_cfg=None,
+            tactile_encoder_cfg=None,
             # parameters passed to step
             **kwargs):
         super().__init__()
@@ -49,13 +50,15 @@ class DP3(BasePolicy):
         obs_shape_meta = shape_meta['obs']
 
         obs_dict = dict_apply(obs_shape_meta, lambda x: x['shape']) # {obs_key: shape}
-        obs_encoder = DP3Encoder(observation_space=obs_dict,
-                                                   img_crop_shape=crop_shape,
-                                                out_channel=encoder_output_dim,
-                                                pointcloud_encoder_cfg=pointcloud_encoder_cfg,
-                                                use_pc_color=use_pc_color,
-                                                pointnet_type=pointnet_type,
-                                                )
+        obs_encoder = DP3Encoder(
+            observation_space=obs_dict,
+            img_crop_shape=crop_shape,
+            out_channel=encoder_output_dim,
+            pointcloud_encoder_cfg=pointcloud_encoder_cfg,
+            use_pc_color=use_pc_color,
+            pointnet_type=pointnet_type,
+            tactile_encoder_cfg=tactile_encoder_cfg,
+        )
 
         # create diffusion model
         obs_feature_dim = obs_encoder.output_shape()
@@ -370,4 +373,3 @@ class DP3(BasePolicy):
         # print(f"t6-t5: {t6-t5:.3f}")
         
         return loss, loss_dict
-

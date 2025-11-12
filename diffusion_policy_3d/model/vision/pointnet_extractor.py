@@ -6,6 +6,7 @@ import copy
 
 from typing import Optional, Dict, Tuple, Union, List, Type
 from termcolor import cprint
+from diffusion_policy_3d.model.vision.resnet_encoder import ResNetEncoder
 
 
 def create_mlp(
@@ -210,12 +211,14 @@ class DP3Encoder(nn.Module):
                  pointcloud_encoder_cfg=None,
                  use_pc_color=False,
                  pointnet_type='pointnet',
+                 tactile_encoder_cfg: Optional[Dict] = None,
                  ):
         super().__init__()
         self.imagination_key = 'imagin_robot'
         self.state_key = 'agent_pos'
         self.point_cloud_key = 'point_cloud'
         self.rgb_image_key = 'image'
+        self.tip_depth_key = 'tip_depth'
         self.n_output_channels = out_channel
         
         self.use_imagined_robot = self.imagination_key in observation_space.keys()
@@ -225,6 +228,10 @@ class DP3Encoder(nn.Module):
             self.imagination_shape = observation_space[self.imagination_key]
         else:
             self.imagination_shape = None
+
+        self.use_tip_depth = self.tip_depth_key in observation_space
+        self.tip_depth_encoder = None
+        self.tip_depth_dim = 0
             
         
         
@@ -257,6 +264,17 @@ class DP3Encoder(nn.Module):
         self.n_output_channels  += output_dim
         self.state_mlp = nn.Sequential(*create_mlp(self.state_shape[0], output_dim, net_arch, state_mlp_activation_fn))
 
+        if self.use_tip_depth:
+            tactile_cfg = {} if tactile_encoder_cfg is None else copy.deepcopy(tactile_encoder_cfg)
+            tip_shape = observation_space[self.tip_depth_key]
+            # tip_shape assumed [C, H, W]
+            tactile_cfg.setdefault("in_channels", tip_shape[0])
+            tactile_cfg.setdefault("output_dim", 128)
+            tactile_cfg.setdefault("pretrained", False)
+            self.tip_depth_encoder = ResNetEncoder(**tactile_cfg)
+            self.tip_depth_dim = self.tip_depth_encoder.output_dim
+            self.n_output_channels += self.tip_depth_dim
+
         cprint(f"[DP3Encoder] output dim: {self.n_output_channels}", "red")
 
 
@@ -270,10 +288,17 @@ class DP3Encoder(nn.Module):
         # points = torch.transpose(points, 1, 2)   # B * 3 * N
         # points: B * 3 * (N + sum(Ni))
         pn_feat = self.extractor(points)    # B * out_channel
-            
+
         state = observations[self.state_key]
         state_feat = self.state_mlp(state)  # B * 64
-        final_feat = torch.cat([pn_feat, state_feat], dim=-1)
+
+        features = [pn_feat, state_feat]
+        if self.use_tip_depth:
+            tip_depth = observations[self.tip_depth_key]
+            tip_feat = self.tip_depth_encoder(tip_depth)
+            features.append(tip_feat)
+
+        final_feat = torch.cat(features, dim=-1)
         return final_feat
 
 

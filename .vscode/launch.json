@@ -65,6 +65,23 @@
             "python": "${command:python.interpreterPath}"
         },
         {
+            "name": "Train DP3 Tactile",
+            "type": "python",
+            "request": "launch",
+            "program": "diffusion_policy_3d/workspace/train_dp3_tictile_workspace.py",
+            "args": [],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "MUJOCO_GL": "egl",
+                "HYDRA_FULL_ERROR": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+            },
+            "justMyCode": false,
+            "stopOnEntry": false,
+            "python": "${command:python.interpreterPath}"
+        },
+        {
             "name": "Resume Train DP3 - Dphand Pick Place",
             "type": "python",
             "request": "launch",

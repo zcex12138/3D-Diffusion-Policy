@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 import torch
 import numpy as np
 import copy
@@ -11,6 +11,14 @@ from diffusion_policy_3d.model.common.normalizer import LinearNormalizer, Single
 from diffusion_policy_3d.dataset.base_dataset import BaseDataset
 from diffusion_policy_3d.common.normalize_util import get_image_range_normalizer
 
+TIP_CAM_NAMES = [
+    "thumb_tip_cam",
+    "index_tip_cam",
+    "middle_tip_cam",
+    "ring_tip_cam",
+    "little_tip_cam",
+]
+
 class DphandDataset(BaseDataset):
     def __init__(self,
             zarr_path, 
@@ -20,12 +28,21 @@ class DphandDataset(BaseDataset):
             seed=42,
             val_ratio=0.0,
             max_train_episodes=None,
+            use_tip_depth=False,
+            tip_cam_names: List[str] = None,
             ):
         super().__init__()
         
         # dphand环境的数据键包括：state, action, point_cloud, img, depth, full_state
+        base_keys = ['state', 'front', 'wrist', 'action', 'point_cloud', 'full_state']
+        self.use_tip_depth = use_tip_depth
+        self.tip_cam_names: List[str] = tip_cam_names or TIP_CAM_NAMES
+        if self.use_tip_depth:
+            tip_keys = [f"tip_depth/{cam}" for cam in self.tip_cam_names]
+            base_keys.extend(tip_keys)
+
         self.replay_buffer = ReplayBuffer.copy_from_path(
-            zarr_path, keys=['state', 'front', 'wrist', 'action', 'point_cloud', 'full_state'])
+            zarr_path, keys=base_keys)
         val_mask = get_val_mask(
             n_episodes=self.replay_buffer.n_episodes, 
             val_ratio=val_ratio,
@@ -68,6 +85,8 @@ class DphandDataset(BaseDataset):
         }
         normalizer = LinearNormalizer()
         normalizer.fit(data=data, last_n_dims=1, mode=mode, **kwargs)
+        if self.use_tip_depth:
+            normalizer['tip_depth'] = get_image_range_normalizer()
         return normalizer
 
     def __len__(self) -> int:
@@ -89,6 +108,16 @@ class DphandDataset(BaseDataset):
             },
             'action': sample['action'].astype(np.float32)
         }
+        if self.use_tip_depth:
+            tip_imgs = []
+            for cam in self.tip_cam_names:
+                cam_img = sample[f"tip_depth/{cam}"].astype(np.float32)  # (T, H, W, 3)
+                # depth images stored as BGR gray, take first channel only
+                cam_gray = cam_img[..., 0:1] / 255.0
+                cam_gray = np.transpose(cam_gray, (0, 3, 1, 2))  # (T, 1, H, W)
+                tip_imgs.append(cam_gray)
+            tip_depth = np.concatenate(tip_imgs, axis=1)  # (T, num_cam, H, W)
+            data['obs']['tip_depth'] = tip_depth.astype(np.float32)
         return data
     
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:

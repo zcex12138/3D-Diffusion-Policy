@@ -36,8 +36,7 @@ TIP_CAM_NAMES = [
     "little_tip_cam",
 ]
 
-
-def depth_to_uint8(depth, max_depth=0.00007):
+def depth_to_uint8(depth, max_depth=0.000005): #before: 7e-5
     """
     将深度 [0, max_depth] 等比例映射到灰度 [0, 255]。
     大于 max_depth 或 无穷远（=0）的部分统一设为背景色（黑）。
@@ -46,6 +45,7 @@ def depth_to_uint8(depth, max_depth=0.00007):
         d_min: 当前帧深度的最小值（裁剪后）
         d_max: 当前帧深度的最大值（裁剪后，<= max_depth）
     """
+
     depth_scaled = np.zeros_like(depth, dtype=np.float32)
     valid = (depth > 0) & (depth <= max_depth)
     depth_scaled[valid] = (depth[valid] / max_depth) * 255.0
@@ -221,7 +221,9 @@ class DphandDepthExporter:
                 _, depth = self.env.unwrapped._viewer.render_segment_depth(
                     self.env.unwrapped.cam_ids[cam_name]
                 )
+                depth = self._depthimg2meters(depth)
                 depth_uint8, d_min, d_max = depth_to_uint8(depth)
+                # print(f"Step {step_idx} | {cam_name} depth range: min={d_min:.6f} m, max={d_max:.6f} m")
                 img_dict[cam_name] = depth_uint8
                 if visualize:
                     vis_imgs.append(depth_uint8)
@@ -268,6 +270,15 @@ class DphandDepthExporter:
     def finalize(self):
         if self.depth_writer:
             self.depth_writer.finalize()
+
+    def _depthimg2meters(self, depth: np.ndarray) -> np.ndarray:
+        """Convert MuJoCo depth buffer [0,1] to metric distances like mujoco_point_cloud."""
+        model = self.env.unwrapped.model
+        extent = model.stat.extent
+        near = model.vis.map.znear * extent
+        far = model.vis.map.zfar * extent
+        # z-buffer map: depth:[0, 1] -> image:[near, far]
+        return near / (1 - depth * (1 - near / far)) - near
 
 
 def main():
