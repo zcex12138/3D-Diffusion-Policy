@@ -145,7 +145,7 @@ class PointCloudGenerator(object):
         else:
             rgb_img = self.viewer.render_rgb_cam("rgb_array", camera_id, False)
             return rgb_img
-        
+
     # https://github.com/htung0101/table_dome/blob/master/table_dome_calib/utils.py#L160
     def depthimg2Meters(self, depth):
         extent = self.model.stat.extent

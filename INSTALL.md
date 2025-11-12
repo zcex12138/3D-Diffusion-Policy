@@ -7,7 +7,7 @@ pip install uv
 uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 
-uv pip install zarr==2.12.0 wandb ipdb gpustat omegaconf hydra-core==1.2.0 dill==0.3.5.1 einops==0.4.1 diffusers==0.11.1 llvmlite numba==0.56.4 moviepy imageio av matplotlib termcolor huggingface_hub==0.25.2 pynput open3d opencv-python
+uv pip install zarr==2.12.0 wandb ipdb gpustat omegaconf hydra-core==1.2.0 dill==0.3.5.1 einops==0.4.1 diffusers==0.11.1 llvmlite numba==0.56.4 moviepy imageio av matplotlib termcolor huggingface_hub==0.25.2 pynput open3d opencv-python timm
 ```
 
 ```

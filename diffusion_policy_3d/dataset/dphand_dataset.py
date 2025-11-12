@@ -78,14 +78,11 @@ class DphandDataset(BaseDataset):
         agent_pos = sample['state'][:,].astype(np.float32)
         # 提取点云数据
         point_cloud = sample['point_cloud'][:,].astype(np.float32)
-        # 提取完整状态（包含机器人状态+物体状态）
-        full_state = sample['full_state'][:,].astype(np.float32)
 
         data = {
             'obs': {
                 'point_cloud': point_cloud, 
-                'agent_pos': agent_pos,
-                'full_state': full_state,
+                'agent_pos': agent_pos
             },
             'action': sample['action'].astype(np.float32)
         }

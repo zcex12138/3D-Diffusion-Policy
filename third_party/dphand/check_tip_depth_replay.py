@@ -27,15 +27,11 @@ ROOT_DIR = str(Path(__file__).resolve().parents[2])
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from diffusion_policy_3d.env.dphand.dphand_wrapper import DphandImageEnvWrapper  # noqa: E402
-from dphand_env.envs.pick_and_place_env import PickAndPlaceEnv  # noqa: E402
+from diffusion_policy_3d.env.dphand.env_factory import make_env
 
 TIP_CAM_NAMES = [
     "thumb_tip_cam",
-    "index_tip_cam",
-    "middle_tip_cam",
-    "ring_tip_cam",
-    "little_tip_cam",
+    "index_tip_cam"
 ]
 
 
@@ -96,8 +92,16 @@ class TipDepthReplayChecker:
             init_arr = meta["init_state"]
             self.init_states = init_arr[:]
 
-        self.env = DphandImageEnvWrapper(
-            PickAndPlaceEnv(config="pick_cube_env_cfg", render_mode="human")
+        self.env = make_env("diffusion_policy_3d/env/dphand/configs/pick_and_place_pc.yaml",
+            use_tactile_obs=True,
+            wrapper_overrides={
+                'TeleopIntervention': {
+                    'enabled': False,
+                },
+                'DphandPointCloudEnvWrapper': {
+                    'use_point_cloud': False,
+                }
+            }
         )
         self.tip_cam_names = TIP_CAM_NAMES
 
@@ -153,21 +157,11 @@ class TipDepthReplayChecker:
                 stored_tip_imgs: Dict[str, np.ndarray] = {}
                 for cam in self.tip_cam_names:
                     _, depth = self.env.unwrapped._viewer.render_segment_depth(
-                        self.env.unwrapped.cam_ids[cam]
+                        self.env.unwrapped.tactile_cam_ids[cam]
                     )
                     live_tip_imgs[cam] = depth_to_uint8(depth)
                     stored_tip_imgs[cam] = ensure_uint8(self.tip_depth_arrays[cam][step_idx])
-
-                # Front comparison (live vs stored)
-                if self.front_imgs is not None and "front" in obs:
-                    live_front = ensure_uint8(obs["front"])
-                    stored_front = ensure_uint8(self.front_imgs[step_idx])
-                    front_pair = np.concatenate([live_front, stored_front], axis=1)
-                elif "front" in obs:
-                    front_img = ensure_uint8(obs["front"])
-                    front_pair = np.concatenate([front_img, front_img], axis=1)
-                else:
-                    front_pair = None
+                live_front = ensure_uint8(obs["front"])
 
                 # Tip comparison panels
                 tip_rows = []
@@ -188,12 +182,9 @@ class TipDepthReplayChecker:
                     tip_rows.append(pair)
 
                 tip_panel = np.concatenate(tip_rows, axis=0)
-                if front_pair is not None:
-                    display_img = np.concatenate([front_pair, tip_panel], axis=0)
-                else:
-                    display_img = tip_panel
 
-                cv2.imshow("Tip Depth Checker", display_img)
+                cv2.imshow("Tip Depth Checker", tip_panel)
+                cv2.imshow("Front", live_front)
                 self.env.render()
                 wait_time = 200 if slow else 1
                 key = cv2.waitKey(wait_time) & 0xFF
@@ -219,7 +210,6 @@ def main():
 
     checker = TipDepthReplayChecker(args.zarr_path)
     checker.run(start_episode=args.start_episode, max_episodes=args.num_episodes, slow=args.slow)
-
 
 if __name__ == "__main__":
     main()

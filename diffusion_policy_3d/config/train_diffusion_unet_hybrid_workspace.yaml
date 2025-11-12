@@ -106,7 +106,7 @@ training:
   tqdm_interval_sec: 1.0
 
 logging:
-  project: diffusion_policy_debug
+  project: dp3
   resume: False
   mode: offline
   name: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}

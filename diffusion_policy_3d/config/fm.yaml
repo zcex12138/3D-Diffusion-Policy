@@ -79,15 +79,15 @@ ema:
   max_value: 0.9999
 
 dataloader:
-  batch_size: 128
-  num_workers: 8
+  batch_size: 512
+  num_workers: 18
   shuffle: True
   pin_memory: True
   persistent_workers: False
 
 val_dataloader:
-  batch_size: 128
-  num_workers: 8
+  batch_size: 512
+  num_workers: 18
   shuffle: False
   pin_memory: True
   persistent_workers: False
@@ -106,10 +106,10 @@ training:
   resume: False
   lr_scheduler: cosine
   lr_warmup_steps: 500
-  num_epochs: 3000
+  num_epochs: 3050
   gradient_accumulate_every: 1
   use_ema: True
-  rollout_every: 250
+  rollout_every: 200
   checkpoint_every: 200
   val_every: 10
   sample_every: 10
@@ -118,11 +118,11 @@ training:
   tqdm_interval_sec: 1.0
 
 logging:
-  group: ${exp_name}
+  project: dp3
+  group: fm
   id: null
   mode: offline
-  name: ${training.seed}
-  project: dp3
+  name: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
   resume: False
   tags:
   - dp3

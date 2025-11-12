@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 from pynput import keyboard
 
-from dphand_teleop.dphand_teleoperator import DPhandTeleoperator
+from dphand_teleop.teleoperator import VisionProTeleoperator
 from dphand_env.mujoco.utils import *
  
 import mujoco
@@ -45,7 +45,7 @@ class TeleopIntervention(gym.ActionWrapper):
     def __init__(self, env, ip="192.168.3.11", test=True, use_relative_pose=True):
         super().__init__(env)
         env.reset()
-        self.expert = DPhandTeleoperator(ip, test=test, n_step=5, use_relative_pose=use_relative_pose)
+        self.expert = VisionProTeleoperator(ip, test=test, n_step=5, use_relative_pose=use_relative_pose, type="dphand")
         self.intervened = True
         self.keyboard = None
         self.use_relative_pose = use_relative_pose
@@ -65,7 +65,7 @@ class TeleopIntervention(gym.ActionWrapper):
         - action: teleop action if nonezero; else, policy action
         """
         if self.intervened:
-            arm_pos, arm_rot, angles = self.expert.get_target_action_j2j()
+            arm_pos, arm_rot, angles = self.expert.get_action()
             if self.use_relative_pose:
                 action[:3] = self._init_pos + 2.0 * arm_pos
                 action[3:7] = arm_rot

@@ -2,70 +2,33 @@
 DphandEnvWrapper使用示例
 展示如何使用wrapper来获取标准化的观察和动作
 """
-import os
-import sys
 import numpy as np
 
-# _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-# _REPO_ROOT = os.path.abspath(os.path.join(_THIS_DIR, "..", "..", ".."))
-# _THIRD_PARTY = os.path.join(_REPO_ROOT, "third_party")
-# _THIRD_PARTY_DPHAND = os.path.join(_THIRD_PARTY, "dphand")
-# _THIRD_PARTY_DPHAND_TELEOP = os.path.join(_THIRD_PARTY, "dphand-teleop")
-# for path in (_REPO_ROOT, _THIRD_PARTY_DPHAND, _THIRD_PARTY_DPHAND_TELEOP):
-#     if path not in sys.path and os.path.isdir(path):
-#         sys.path.insert(0, path)
-
-from diffusion_policy_3d.env.dphand.dphand_wrapper import DphandPointCloudEnvWrapper
 from diffusion_policy_3d.gym_util.mujoco_point_cloud import point_cloud_sampling
-from dphand_env.envs.pick_and_place_env import PickAndPlaceEnv
-from dphand_env.mujoco.wrappers import TeleopIntervention
-
+from diffusion_policy_3d.env.dphand.env_factory import make_env
+from pathlib import Path
 import visualizer
 np.set_printoptions(4)
 
-show_point_cloud = True
-if show_point_cloud:
-    visualizer_3d = visualizer.RealTime3DVisualizer()
-    visualizer_3d.start_visualization(port=5000)
-
 def main():
     """主函数: 演示wrapper的基本用法"""
-    env = PickAndPlaceEnv(config="pick_cube_env_cfg", render_mode="human")
-    env = TeleopIntervention(env, ip="192.168.3.80", test=True, use_relative_pose=True)
-    # 创建环境wrapper
-    env = DphandPointCloudEnvWrapper(
-        env=env,
-        use_point_cloud=False,
-        num_points=1024
+    cfg_path = Path(__file__).parent / "configs" / "pick_and_place_image.yaml"
+    env = make_env(
+        str(cfg_path),
+        wrapper_overrides={}
     )
+
+    show_point_cloud = False
+    if show_point_cloud:
+        pc = env.pc_generator
+        visualizer_3d = visualizer.RealTime3DVisualizer()
+        visualizer_3d.start_visualization(port=5000)
+
     obs = env.reset()
 
     # 运行几个episode
     import cv2
     import time
-
-    tip_cam_names = [
-        "thumb_tip_cam",
-        "index_tip_cam",
-        "middle_tip_cam",
-        "ring_tip_cam",
-        "little_tip_cam",
-    ]
-
-    def depth_to_uint8(depth):
-        valid = depth > 0
-        depth_scaled = np.zeros_like(depth, dtype=np.float32)
-        d_min = 0.0
-        d_max = 0.0
-        if np.any(valid):
-            d = depth[valid].astype(np.float32)
-            d_min = float(d.min())
-            d_max = float(d.max())
-            denom = (d_max - d_min) + 1e-8
-            depth_scaled[valid] = (d - d_min) / denom * 255.0
-        depth_uint8 = depth_scaled.astype(np.uint8)
-        depth_uint8 = cv2.cvtColor(depth_uint8, cv2.COLOR_GRAY2BGR)
-        return depth_uint8, d_min, d_max
 
     for episode in range(100):
         print(f"\n=== Episode {episode + 1} ===")
@@ -75,10 +38,9 @@ def main():
 
         # 重置环境
         obs = env.reset()
-        pc = env.pc_generator
         start_time = time.time()
         done = False
-        while not done:  # 限制每episode的步数
+        while not done:
             # 生成随机动作
             action = np.random.uniform(
                 low=env.action_space.low,
@@ -91,28 +53,14 @@ def main():
             total_reward += reward
             step_count += 1
 
-            # 显示图像（如果可用）
-            # 转换为BGR格式用于OpenCV显示
-            tip_depth_imgs = []
-            for cam_name in tip_cam_names:
-                _, depth = env.unwrapped._viewer.render_segment_depth(env.unwrapped.cam_ids[cam_name])
-                depth_uint8, d_min, d_max = depth_to_uint8(depth)
-                cv2.putText(
-                    depth_uint8,
-                    cam_name,
-                    (5, 15),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.4,
-                    (0, 255, 0),
-                    1,
-                    cv2.LINE_AA,
-                )
-                print(f"{cam_name} depth min: {d_min:.4f}, max: {d_max:.4f}")
-                tip_depth_imgs.append(depth_uint8)
+            # 显示图像
+            images = []
+            for cam_name in env.cam_names:
+                image = obs[cam_name]
+                images.append(image)
+            images = np.concatenate(images, axis=1)
+            cv2.imshow('images', images)
 
-            tip_depth_viz = np.concatenate(tip_depth_imgs, axis=1)
-            cv2.imshow('front_rgb', obs['front'])
-            cv2.imshow('tip_depths', tip_depth_viz)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
             env.render()
@@ -138,5 +86,4 @@ def main():
     print("\n环境已关闭")
 
 if __name__ == "__main__":
-
     main()

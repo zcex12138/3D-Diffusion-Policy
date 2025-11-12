@@ -37,11 +37,11 @@ class OSViewer(OffScreenViewer):
             self.viewport.height = self.img_obs_height
         return super().render(render_mode=render_mode,camera_id=camera_id,segmentation=segmentation)
 
-    def render_segment_depth(self, camera_id, geom_id=0):
+    def render_segment_depth(self, camera_id, geom_id=0, size=None):
         """
         用于在深度图中过滤 id < geom_id 的物体
         """
-        segment, depth = self.render_rgb_cam(render_mode="rgbd_tuple", camera_id=camera_id, segmentation=True)
+        segment, depth = self.render_rgb_cam(render_mode="rgbd_tuple", camera_id=camera_id, segmentation=True, size=size)
         segment = segment[:, :, 1] > geom_id
         depth = depth * segment
         return segment, depth
@@ -174,11 +174,11 @@ class Viewer(WindowViewer):
     def set_sitegroup(self, group_id, flag: bool):
         self.vopt.sitegroup[group_id] = flag
     
-    def render_segment_depth(self, camera_id, geom_id=0):
+    def render_segment_depth(self, camera_id, geom_id=0, size=None):
         """
         用于在深度图中过滤 id < geom_id 的物体
         """
-        segment, depth = self.render_rgb_cam(render_mode="rgbd_tuple", camera_id=camera_id, segmentation=True)
+        segment, depth = self.render_rgb_cam(render_mode="rgbd_tuple", camera_id=camera_id, segmentation=True, size=size)
         segment = segment[:, :, 1] > geom_id
         depth = depth * segment
         return segment, depth

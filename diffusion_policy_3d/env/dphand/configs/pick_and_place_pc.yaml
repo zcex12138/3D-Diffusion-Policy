@@ -1,0 +1,19 @@
+env:
+  type: PickAndPlaceEnv
+  task: pick_cube
+  use_tactile_obs: false
+  render_mode: human
+
+wrappers:
+  - type: TeleopIntervention
+    enabled: true
+    params:
+      ip: "192.168.3.80"
+      test: true
+      use_relative_pose: true
+  
+  - type: DphandPointCloudEnvWrapper
+    enabled: true
+    params:
+      use_point_cloud: true
+      num_points: 512

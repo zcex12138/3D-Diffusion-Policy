@@ -6,11 +6,11 @@ import numpy as np
 from dphand_env.mujoco.utils import *
 import yaml
 
-from dphand_env.envs.base_env.dphand_panda_env import DphandPandaEnv
+from dphand_env.envs.base_env import BaseEnv
 
 _CONFIG_PATH = Path(__file__).parent.parent / "configs"
 
-class PickAndPlaceEnv(DphandPandaEnv):
+class PickAndPlaceEnv(BaseEnv):
     def __init__(self, 
         config: str, 
         render_mode: Literal["rgb_array", "human"] = "rgb_array"
@@ -76,7 +76,7 @@ class PickAndPlaceEnv(DphandPandaEnv):
 
 if __name__ == "__main__":
     from dphand_env.mujoco.wrappers import TeleopIntervention
-    env = PickAndPlaceEnv(config="pick_cube_env_cfg", render_mode="human")
+    env = PickAndPlaceEnv(config="pick_cube_tactile_env_cfg", render_mode="human")
     env = TeleopIntervention(env, ip="192.168.3.11", test=True, use_relative_pose=True)
     env.reset()
     # 'esc' to quit

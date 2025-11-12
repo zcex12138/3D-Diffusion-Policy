@@ -6,14 +6,15 @@ from diffusion_policy_3d.gym_util.mujoco_point_cloud import PointCloudGenerator,
 
 
 class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
-    def __init__(self, env, num_points=1024, use_point_cloud=True):
+    def __init__(self, env, num_points=1024, use_point_cloud=True, use_tactile_obs=False):
         super().__init__(env)
         self._viewer = self.env.unwrapped._viewer
         self.image_size = self.env.unwrapped._image_size
         self.num_points = num_points
         self.use_point_cloud = use_point_cloud
+        self.use_tactile_obs = use_tactile_obs
         self.cam_names = list(getattr(self.env.unwrapped, "cam_names", ["front", "wrist"]))
-
+        self.tactile_cam_names = list(getattr(self.env.unwrapped, "tactile_cam_names", []))
         self.use_point_crop = False
 
         # 设置点云生成器
@@ -44,6 +45,17 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
         obs_space['agent_pos'] = spaces.Box(-np.inf, np.inf, (obs_sensor_dim,), np.float32)
         # 添加完整状态观察空间
         obs_space['full_state'] = spaces.Box(-np.inf, np.inf, (obs_sensor_dim * 2 + 14,), np.float32)
+        
+        # 添加触觉观测空间（如果启用）
+        if self.use_tactile_obs:
+            obs_space['tactile'] = spaces.Dict({
+                cam_name: spaces.Box(0, 255, 
+                    (self.image_size, self.image_size),
+                    np.float32
+                )
+                for cam_name in self.tactile_cam_names
+            })
+        
         self.observation_space = spaces.Dict(obs_space)
 
     def observation(self, obs):
@@ -85,6 +97,11 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
             obs["state"]["target_pos"], # 3
             obs["state"]["target_quat"] # 4
         ])
+        
+        # 添加触觉观测（如果启用）
+        if self.use_tactile_obs and self.tactile_cam_names:
+            new_obs['tactile'] = obs['tactile']
+        
         return new_obs
 
     def step(self, action):
@@ -96,7 +113,7 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
     def reset(self, **kwargs):
         """重置环境"""
         obs, info = self.env.reset(**kwargs)
-        return self.observation(obs)
+        return self.observation(obs), info
 
     def seed(self, seed=None):
         """设置随机种子（兼容性方法）"""
@@ -117,11 +134,20 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
 
 
 class DphandImageEnvWrapper(gym.ObservationWrapper):
-    def __init__(self, env):
+    def __init__(self, env, use_tactile_obs=False):
         super().__init__(env)
         self._viewer = self.env.unwrapped._viewer
         self.image_size = self.env.unwrapped._image_size
+        self.use_tactile_obs = use_tactile_obs
         self.cam_names = list(getattr(self.env.unwrapped, "cam_names", ['front', 'wrist']))
+
+        # 获取触觉相机信息（如果启用）
+        if self.use_tactile_obs:
+            self.tactile_cam_names = list(getattr(
+                self.env.unwrapped, 
+                "tactile_cam_names", 
+                []
+            ))
 
         # 环境参数
         self.episode_length = self._max_episode_steps = 1000
@@ -137,6 +163,19 @@ class DphandImageEnvWrapper(gym.ObservationWrapper):
             obs_space[cam_name] = spaces.Box(0, 255, (self.image_size, self.image_size, 3), np.float32) # image
         obs_sensor_dim = len(self.env.unwrapped._dphand_dof_ids) + 3
         obs_space['agent_pos'] = spaces.Box(-np.inf, np.inf, (obs_sensor_dim,), np.float32)
+        
+        # 添加触觉观测空间（如果启用）
+        if self.use_tactile_obs and self.tactile_cam_names:
+            obs_space['tactile'] = spaces.Dict({
+                cam_name: spaces.Box(
+                    0, 
+                    255, 
+                    (self.tactile_image_size, self.tactile_image_size),
+                    np.float32
+                )
+                for cam_name in self.tactile_cam_names
+            })
+        
         self.observation_space = spaces.Dict(obs_space)
 
     def observation(self, obs):
@@ -150,6 +189,11 @@ class DphandImageEnvWrapper(gym.ObservationWrapper):
             obs["state"]["panda/ee_quat"],
             obs["state"]["dphand/joint_pos"]
         ])
+        if self.use_tactile_obs and self.tactile_cam_names:
+            new_obs['tactile'] = {
+                cam_name: obs['tactile'][cam_name]
+                for cam_name in self.tactile_cam_names
+            }
         return new_obs
 
     def step(self, action):
@@ -161,7 +205,7 @@ class DphandImageEnvWrapper(gym.ObservationWrapper):
     def reset(self, **kwargs):
         """重置环境"""
         obs, info = self.env.reset(**kwargs)
-        return self.observation(obs)
+        return self.observation(obs), info
 
     def seed(self, seed=None):
         """设置随机种子（兼容性方法）"""
