@@ -168,7 +168,42 @@ class ReplayBuffer:
                 keys = src_root['data'].keys()
             data = dict()
             for key in keys:
-                arr = src_root['data'][key]
+                # Support nested keys like 'tactile/thumb_tip_cam'
+                # Try direct access first (flat key like 'action', 'state')
+                try:
+                    arr = src_root['data'][key]
+                    # Check if it's a group (nested structure)
+                    if isinstance(arr, zarr.Group):
+                        # For nested groups, we need to access the nested array
+                        # But we don't know which array to access, so skip it
+                        cprint(f"[ReplayBuffer] Warning: Key '{key}' is a group, not an array, skipping", "yellow")
+                        continue
+                except KeyError:
+                    # Try nested access (e.g., 'tactile/thumb_tip_cam')
+                    # Split the key and access nested structure
+                    parts = key.split('/')
+                    if len(parts) == 2:
+                        group_name, array_name = parts
+                        try:
+                            group = src_root['data'][group_name]
+                            if isinstance(group, zarr.Group):
+                                arr = group[array_name]
+                            else:
+                                # Not a group, skip
+                                cprint(f"[ReplayBuffer] Warning: Key '{key}' not found in zarr, skipping", "yellow")
+                                continue
+                        except (KeyError, TypeError):
+                            # Key doesn't exist, skip it
+                            cprint(f"[ReplayBuffer] Warning: Key '{key}' not found in zarr, skipping", "yellow")
+                            continue
+                    else:
+                        # Key doesn't exist, skip it
+                        cprint(f"[ReplayBuffer] Warning: Key '{key}' not found in zarr, skipping", "yellow")
+                        continue
+                # Check if it's still a group (shouldn't happen, but be safe)
+                if isinstance(arr, zarr.Group):
+                    cprint(f"[ReplayBuffer] Warning: Key '{key}' is a group, not an array, skipping", "yellow")
+                    continue
                 data[key] = arr[:]
             root = {
                 'meta': meta,
@@ -183,21 +218,73 @@ class ReplayBuffer:
             if keys is None:
                 keys = src_root['data'].keys()
             for key in keys:
-                value = src_root['data'][key]
+                # Support nested keys like 'tactile/thumb_tip_cam'
+                # Try direct access first (flat key like 'action', 'state')
+                try:
+                    value = src_root['data'][key]
+                    # Check if it's a group (nested structure)
+                    if isinstance(value, zarr.Group):
+                        # For nested groups, we need to access the nested array
+                        # But we don't know which array to access, so skip it
+                        cprint(f"[ReplayBuffer] Warning: Key '{key}' is a group, not an array, skipping", "yellow")
+                        continue
+                except KeyError:
+                    # Try nested access (e.g., 'tactile/thumb_tip_cam')
+                    # Split the key and access nested structure
+                    parts = key.split('/')
+                    if len(parts) == 2:
+                        group_name, array_name = parts
+                        try:
+                            group = src_root['data'][group_name]
+                            if isinstance(group, zarr.Group):
+                                value = group[array_name]
+                            else:
+                                # Not a group, skip
+                                cprint(f"[ReplayBuffer] Warning: Key '{key}' not found in zarr, skipping", "yellow")
+                                continue
+                        except (KeyError, TypeError):
+                            # Key doesn't exist, skip it
+                            cprint(f"[ReplayBuffer] Warning: Key '{key}' not found in zarr, skipping", "yellow")
+                            continue
+                    else:
+                        # Key doesn't exist, skip it
+                        cprint(f"[ReplayBuffer] Warning: Key '{key}' not found in zarr, skipping", "yellow")
+                        continue
+                # Check if it's still a group (shouldn't happen, but be safe)
+                if isinstance(value, zarr.Group):
+                    cprint(f"[ReplayBuffer] Warning: Key '{key}' is a group, not an array, skipping", "yellow")
+                    continue
                 cks = cls._resolve_array_chunks(
                     chunks=chunks, key=key, array=value)
                 cpr = cls._resolve_array_compressor(
                     compressors=compressors, key=key, array=value)
                 if cks == value.chunks and cpr == value.compressor:
                     # copy without recompression
-                    this_path = '/data/' + key
+                    # For nested keys like 'tactile/thumb_tip_cam', use the full path
+                    if '/' in key:
+                        # Nested key, use full path for source
+                        src_path = '/data/' + key
+                        # For destination, we need to flatten to avoid nested structure issues
+                        # ReplayBuffer expects flat keys in data group
+                        dest_path = '/data/' + key.replace('/', '_')
+                    else:
+                        src_path = '/data/' + key
+                        dest_path = '/data/' + key
                     n_copied, n_skipped, n_bytes_copied = zarr.copy_store(
                         source=src_store, dest=store,
-                        source_path=this_path, dest_path=this_path,
+                        source_path=src_path, dest_path=dest_path,
                         if_exists=if_exists
                     )
+                    # Update key to flattened name for consistency
+                    if '/' in key:
+                        key = key.replace('/', '_')
                 else:
                     # copy with recompression
+                    # For nested keys, flatten the name in destination
+                    original_key = key
+                    if '/' in key:
+                        # Flatten nested key name (e.g., 'tactile/thumb_tip_cam' -> 'tactile_thumb_tip_cam')
+                        key = key.replace('/', '_')
                     n_copied, n_skipped, n_bytes_copied = zarr.copy(
                         source=value, dest=data_group, name=key,
                         chunks=cks, compressor=cpr, if_exists=if_exists

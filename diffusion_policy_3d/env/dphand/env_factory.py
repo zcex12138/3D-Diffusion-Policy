@@ -158,14 +158,16 @@ def make_env(cfg_path: str,
     for wrapper_cfg in wrappers_cfg:
         wrapper_type = wrapper_cfg.get('type')
         
-        # 检查是否通过wrapper_overrides禁用了该wrapper
+        # 确定是否启用该wrapper：优先使用wrapper_overrides中的enabled，否则使用配置文件中的enabled
+        enabled = wrapper_cfg.get('enabled', True)
         if wrapper_overrides and wrapper_type in wrapper_overrides:
             override_cfg = wrapper_overrides[wrapper_type]
-            if override_cfg.get('enabled') is False:
-                continue
+            # 如果override中明确指定了enabled，则使用override的值
+            if 'enabled' in override_cfg:
+                enabled = override_cfg.get('enabled')
         
-        # 检查配置文件中的enabled设置
-        if not wrapper_cfg.get('enabled', True):
+        # 如果被禁用，则跳过该wrapper
+        if not enabled:
             continue
         
         if wrapper_type not in WRAPPER_REGISTRY:
@@ -230,14 +232,16 @@ def make_env_from_dict(cfg_dict: Dict[str, Any], wrapper_overrides: Optional[Dic
     for wrapper_cfg in wrappers_cfg:
         wrapper_type = wrapper_cfg.get('type')
         
-        # 检查是否通过wrapper_overrides禁用了该wrapper
+        # 确定是否启用该wrapper：优先使用wrapper_overrides中的enabled，否则使用配置文件中的enabled
+        enabled = wrapper_cfg.get('enabled', True)
         if wrapper_overrides and wrapper_type in wrapper_overrides:
             override_cfg = wrapper_overrides[wrapper_type]
-            if override_cfg.get('enabled') is False:
-                continue
+            # 如果override中明确指定了enabled，则使用override的值
+            if 'enabled' in override_cfg:
+                enabled = override_cfg.get('enabled')
         
-        # 检查配置文件中的enabled设置
-        if not wrapper_cfg.get('enabled', True):
+        # 如果被禁用，则跳过该wrapper
+        if not enabled:
             continue
         
         if wrapper_type not in WRAPPER_REGISTRY:

@@ -140,7 +140,6 @@ class PointCloudGenerator(object):
     def captureImage(self, camera_id, capture_depth=True):
         _, depth = self.viewer.render_segment_depth(camera_id, self.filter_geom_id)
         if capture_depth:
-            depth = self.depthimg2Meters(depth)
             return depth
         else:
             rgb_img = self.viewer.render_rgb_cam("rgb_array", camera_id, False)

@@ -3,10 +3,10 @@
 Dphand 指尖深度导出脚本（带 episode 重置）
 
 功能：
-- 读取 zarr 数据，按 episode 顺序回放（每个 demo 结束后强制 reset）
-- 对每一步，用动作驱动环境一步
-- 从 5 个指尖相机渲染深度，转成灰度图 (uint8, 3 通道 BGR)
-- 写入克隆出的 zarr 文件 data/tip_depth/<cam_name>
+- 读取 zarr 数据, 按 episode 顺序回放（每个 demo 结束后强制 reset）
+- 对每一步, 用动作驱动环境一步
+- 从指尖相机渲染深度, 转成灰度图 (uint8, 3 通道 BGR)
+- 写入克隆出的 zarr 文件 data/tactile/<cam_name>
 - 可选实时可视化 (--visualize)
 """
 
@@ -25,46 +25,27 @@ import cv2
 ROOT_DIR = str(Path(__file__).parent.parent)
 sys.path.append(ROOT_DIR)
 
-from diffusion_policy_3d.env.dphand.dphand_wrapper import DphandImageEnvWrapper
-from dphand_env.envs.pick_and_place_env import PickAndPlaceEnv
+from diffusion_policy_3d.env.dphand.env_factory import make_env
 
 TIP_CAM_NAMES = [
     "thumb_tip_cam",
     "index_tip_cam",
-    "middle_tip_cam",
-    "ring_tip_cam",
-    "little_tip_cam",
 ]
 
-
-def depth_to_uint8(depth, max_depth=0.00007):
-    """
-    将深度 [0, max_depth] 等比例映射到灰度 [0, 255]。
-    大于 max_depth 或 无穷远（=0）的部分统一设为背景色（黑）。
-    返回:
-        depth_uint8: 3 通道 BGR 灰度图 (uint8)
-        d_min: 当前帧深度的最小值（裁剪后）
-        d_max: 当前帧深度的最大值（裁剪后，<= max_depth）
-    """
+def depth_to_uint8(depth, max_depth=0.000005): #before: 7e-5
     depth_scaled = np.zeros_like(depth, dtype=np.float32)
     valid = (depth > 0) & (depth <= max_depth)
     depth_scaled[valid] = (depth[valid] / max_depth) * 255.0
     depth_uint8 = depth_scaled.astype(np.uint8)
     depth_uint8 = cv2.cvtColor(depth_uint8, cv2.COLOR_GRAY2BGR)
 
-    if np.any(valid):
-        d_min = float(depth[valid].min())
-        d_max = float(depth[valid].max())
-    else:
-        d_min = 0.0
-        d_max = 0.0
-    return depth_uint8, d_min, d_max
+    return depth_uint8
 
 
 class TipDepthZarrWriter:
     """
-    克隆原始 zarr，并在 data/tip_depth/ 下写入灰度指尖深度图
-    每个相机一个数组：shape = (N, H, W, 3), dtype = uint8
+    克隆原始 zarr, 并在 data/tactile/ 下写入灰度指尖深度图
+    每个相机一个数组: shape = (N, H, W), dtype = float32
     """
 
     def __init__(self, src_zarr_path: str, dst_zarr_path: str, cam_names: List[str]):
@@ -72,7 +53,7 @@ class TipDepthZarrWriter:
         self.dst_zarr_path = os.path.abspath(os.path.expanduser(dst_zarr_path))
         self.src_zarr_path = os.path.abspath(os.path.expanduser(src_zarr_path))
         if self.dst_zarr_path == self.src_zarr_path:
-            raise ValueError("输出路径不能与原路径相同，否则会破坏源数据。")
+            raise ValueError("输出路径不能与原路径相同, 否则会破坏源数据。")
 
         # 拷贝源 zarr 结构到新目录
         src_root = zarr.open(self.src_zarr_path, mode="r")
@@ -80,7 +61,7 @@ class TipDepthZarrWriter:
         zarr.copy_store(src_root.store, dst_store, if_exists="replace")
 
         self.root = zarr.open(dst_store, mode="a")
-        self.tip_group = self.root.require_group("data").require_group("tip_depth")
+        self.tip_group = self.root.require_group("data").require_group("tactile")
         self.arrays: Dict[str, zarr.Array] = {}
         self.img_shape = None
         self.total_steps = 0
@@ -89,16 +70,16 @@ class TipDepthZarrWriter:
         )
 
     def _ensure_arrays(self, img_shape):
-        """第一次写入时，根据图像形状初始化各个相机数组"""
+        """第一次写入时, 根据图像形状初始化各个相机数组"""
         if self.img_shape is not None:
             return
-        self.img_shape = img_shape  # (H, W, 3)
+        self.img_shape = img_shape  # (H, W)
         for cam_name in self.cam_names:
             self.arrays[cam_name] = self.tip_group.zeros(
                 name=cam_name,
-                shape=(0,) + img_shape,  # (N, H, W, 3)
-                chunks=(1,) + img_shape,
-                dtype=np.uint8,
+                shape=(0,) + img_shape,  # (N, H, W)
+                chunks=(100,) + img_shape,  # chunk size: 100 time steps
+                dtype=np.float32,
                 compressor=self.compressor,
             )
 
@@ -116,7 +97,7 @@ class TipDepthZarrWriter:
             arr[-1] = img_dict[cam_name]
 
     def finalize(self):
-        # 目前没有额外操作，留接口方便将来扩展
+        # 目前没有额外操作, 留接口方便将来扩展
         pass
 
 
@@ -125,21 +106,21 @@ class DphandDepthExporter:
     不基于 episode 的深度导出器：
     - 从原始 zarr 中直接读取 data/action（按时间展开）
     - 用环境按顺序执行这些动作
-    - 每一步渲染指尖相机深度，转灰度图，写入新的 zarr
+    - 每一步渲染指尖相机深度, 转灰度图, 写入新的 zarr
     """
 
-    def __init__(self, zarr_path: str, depth_zarr_path: Optional[str] = None):
+    def __init__(self, zarr_path: str, depth_zarr_path: str):
         self.zarr_path = zarr_path
         self.zarr_root = zarr.open(zarr_path, mode="r")
 
         # 动作序列：按时间展开
         if "action" not in self.zarr_root["data"]:
-            raise KeyError("zarr['data']['action'] 不存在，请检查数据格式。")
+            raise KeyError("zarr['data']['action'] 不存在, 请检查数据格式。")
         self.actions = self.zarr_root["data"]["action"][:]  # (N, act_dim)
 
         # episode meta 信息
         if "episode_ends" not in self.zarr_root["meta"]:
-            raise KeyError("zarr['meta']['episode_ends'] 不存在，无法确定 demo 边界。")
+            raise KeyError("zarr['meta']['episode_ends'] 不存在, 无法确定 demo 边界。")
         self.episode_ends = self.zarr_root["meta"]["episode_ends"][:].astype(np.int64)
         if self.episode_ends.ndim != 1 or len(self.episode_ends) == 0:
             raise ValueError("episode_ends 格式不正确。")
@@ -150,7 +131,7 @@ class DphandDepthExporter:
         else:
             self.init_states = None
 
-        # 如果有 front 图像，用于可视化时拼接
+        # 如果有 front 图像, 用于可视化时拼接
         self.has_front = (
             "image" in self.zarr_root["data"]
             and "front" in self.zarr_root["data"]["image"]
@@ -161,8 +142,13 @@ class DphandDepthExporter:
             self.front_imgs = None
 
         # 创建环境
-        self.env = DphandImageEnvWrapper(
-            PickAndPlaceEnv(config="pick_cube_env_cfg", render_mode="human")
+        self.env = make_env("diffusion_policy_3d/env/dphand/configs/pick_and_place_pc.yaml",
+            use_tactile_obs=True,
+            wrapper_overrides={
+                'DphandPointCloudEnvWrapper': {
+                    'use_point_cloud': False,
+                }
+            }
         )
         self.tip_cam_names = TIP_CAM_NAMES
 
@@ -202,7 +188,7 @@ class DphandDepthExporter:
         else:
             num_steps = num_steps_total
 
-        print(f"总 step 数: {num_steps_total}，本次处理: {num_steps} 步")
+        print(f"总 step 数: {num_steps_total}, 本次处理: {num_steps} 步")
 
         # 初次 reset（第 0 个 demo）
         episode_idx = 0
@@ -218,11 +204,10 @@ class DphandDepthExporter:
 
             # 渲染每个指尖相机的深度并转成灰度 BGR 图
             for cam_name in self.tip_cam_names:
-                _, depth = self.env.unwrapped._viewer.render_segment_depth(
-                    self.env.unwrapped.cam_ids[cam_name]
-                )
-                depth_uint8, d_min, d_max = depth_to_uint8(depth)
-                img_dict[cam_name] = depth_uint8
+                depth = obs['tactile'][cam_name].squeeze()
+                depth_uint8 = depth_to_uint8(depth)
+                # print(f"Step {step_idx} | {cam_name} depth range: min={d_min:.6f} m, max={d_max:.6f} m")
+                img_dict[cam_name] = depth
                 if visualize:
                     vis_imgs.append(depth_uint8)
 
@@ -235,14 +220,14 @@ class DphandDepthExporter:
                 if self.has_front:
                     tip_panel = np.concatenate(vis_imgs, axis=0)
                     all_img = np.concatenate(
-                        [self.front_imgs[step_idx], tip_panel], axis=0
+                        [self.front_imgs[step_idx].transpose(1,2,0), tip_panel], axis=0
                     )
                 else:
                     all_img = np.concatenate(vis_imgs, axis=0)
                 cv2.imshow("front_and_tip_depths", all_img)
                 self.env.render()
                 if cv2.waitKey(1) & 0xFF == ord("q"):
-                    print("检测到按键 'q'，提前结束。")
+                    print("检测到按键 'q', 提前结束。")
                     break
 
             # 判断 demo 边界
@@ -269,13 +254,12 @@ class DphandDepthExporter:
         if self.depth_writer:
             self.depth_writer.finalize()
 
-
 def main():
     parser = argparse.ArgumentParser(description="Dphand 指尖灰度深度生成脚本（无 episode）")
     parser.add_argument(
         "--zarr_path",
         type=str,
-        default="data/1014/pick_and_place_47demos_1014_pc.zarr",
+        default="data/1117/pick_and_place_1117_pc.zarr",
         help="原始 zarr 数据路径",
     )
     parser.add_argument(
@@ -296,18 +280,11 @@ def main():
         help="是否实时显示回放（默认不显示）",
     )
     args = parser.parse_args()
-
-    print(f"加载数据: {args.zarr_path}")
-
-    depth_zarr_path = (
-        args.depth_zarr_path
-        if args.depth_zarr_path
-        else args.zarr_path.replace(".zarr", "_tip_gray.zarr")
-    )
+    args.visualize = True
 
     exporter = DphandDepthExporter(
         zarr_path=args.zarr_path,
-        depth_zarr_path=depth_zarr_path,
+        depth_zarr_path=args.zarr_path.replace(".zarr", "_tactile.zarr"),
     )
 
     exporter.run(max_steps=args.max_steps, visualize=args.visualize)
@@ -316,7 +293,7 @@ def main():
     if args.visualize:
         cv2.destroyAllWindows()
 
-    print(f"所有 step 处理完成，输出保存到: {depth_zarr_path}")
+    print(f"所有 step 处理完成, 输出保存到: {args.zarr_path.replace('.zarr', '_tactile.zarr')}")
 
 
 if __name__ == "__main__":

@@ -12,13 +12,21 @@ np.set_printoptions(4)
 
 def main():
     """主函数: 演示wrapper的基本用法"""
-    cfg_path = Path(__file__).parent / "configs" / "pick_and_place_image.yaml"
+    cfg_path = Path(__file__).parent / "configs" / "pick_and_place_pc.yaml"
     env = make_env(
         str(cfg_path),
-        wrapper_overrides={}
+        wrapper_overrides={
+            "TeleopIntervention": {
+                "enabled": True,
+                "ip": "192.168.3.80",
+                "test": True,
+                "use_relative_pose": True,
+            }
+        }
     )
 
-    show_point_cloud = False
+    # 只有使用 pick_and_place_pc 创建环境才能显示点云
+    show_point_cloud = True
     if show_point_cloud:
         pc = env.pc_generator
         visualizer_3d = visualizer.RealTime3DVisualizer()
@@ -56,7 +64,7 @@ def main():
             # 显示图像
             images = []
             for cam_name in env.cam_names:
-                image = obs[cam_name]
+                image = obs['image'][cam_name].transpose(1,2,0)
                 images.append(image)
             images = np.concatenate(images, axis=1)
             cv2.imshow('images', images)
@@ -67,7 +75,7 @@ def main():
 
             if show_point_cloud:
                 # point_cloud = obs['point_cloud']
-                point_cloud = pc.generatePointCloudFromImages(obs['front'], obs['depth'], use_rgb=True)
+                point_cloud = pc.generatePointCloudFromImages(obs['image']['front'].transpose(1,2,0).copy(), obs['depth'].squeeze(), use_rgb=True)
                 point_cloud = point_cloud_sampling(point_cloud, 512, 'fps')
                 # index = (np.abs(point_cloud[:,0])<0.001) & (np.abs(point_cloud[:,1])<0.001) & (np.abs(point_cloud[:,2])<0.001)
                 visualizer_3d.update_point_cloud(point_cloud)

@@ -35,7 +35,7 @@ TIP_CAM_NAMES = [
 ]
 
 
-def depth_to_uint8(depth: np.ndarray, max_depth: float = 7e-5) -> np.ndarray:
+def depth_to_uint8(depth: np.ndarray, max_depth: float = 0.000005) -> np.ndarray:
     """Convert MuJoCo depth map to a uint8 BGR visualization."""
     depth_scaled = np.zeros_like(depth, dtype=np.float32)
     valid = (depth > 0) & (depth <= max_depth)
@@ -69,16 +69,16 @@ class TipDepthReplayChecker:
             self.front_imgs = data["image"]["front"][:]
 
         # Tip depth images (expected to exist after export)
-        if "tip_depth" not in data:
-            raise KeyError("Missing 'data/tip_depth' group. Did you export tip depth?")
-        self.tip_depth_arrays = {
-            cam: data["tip_depth"][cam][:]
+        if "tactile" not in data:
+            raise KeyError("Missing 'data/tactile' group. Did you export tip depth?")
+        self.tactile_arrays = {
+            cam: data["tactile"][cam][:]
             for cam in TIP_CAM_NAMES
-            if cam in data["tip_depth"]
+            if cam in data["tactile"]
         }
-        missing = [cam for cam in TIP_CAM_NAMES if cam not in self.tip_depth_arrays]
+        missing = [cam for cam in TIP_CAM_NAMES if cam not in self.tactile_arrays]
         if missing:
-            raise KeyError(f"Tip depth arrays missing for cams: {missing}")
+            raise KeyError(f"Tactile arrays missing for cams: {missing}")
 
         # Episode boundaries
         if "episode_ends" not in meta:
@@ -95,9 +95,6 @@ class TipDepthReplayChecker:
         self.env = make_env("diffusion_policy_3d/env/dphand/configs/pick_and_place_pc.yaml",
             use_tactile_obs=True,
             wrapper_overrides={
-                'TeleopIntervention': {
-                    'enabled': False,
-                },
                 'DphandPointCloudEnvWrapper': {
                     'use_point_cloud': False,
                 }
@@ -156,11 +153,9 @@ class TipDepthReplayChecker:
                 live_tip_imgs: Dict[str, np.ndarray] = {}
                 stored_tip_imgs: Dict[str, np.ndarray] = {}
                 for cam in self.tip_cam_names:
-                    _, depth = self.env.unwrapped._viewer.render_segment_depth(
-                        self.env.unwrapped.tactile_cam_ids[cam]
-                    )
+                    depth = obs['tactile'][cam]
                     live_tip_imgs[cam] = depth_to_uint8(depth)
-                    stored_tip_imgs[cam] = ensure_uint8(self.tip_depth_arrays[cam][step_idx])
+                    stored_tip_imgs[cam] = depth_to_uint8(self.tactile_arrays[cam][step_idx])
                 live_front = ensure_uint8(obs["front"])
 
                 # Tip comparison panels
@@ -202,7 +197,7 @@ class TipDepthReplayChecker:
 
 def main():
     parser = argparse.ArgumentParser(description="Replay demos and verify saved tip-depth images.")
-    parser.add_argument("--zarr_path", default="data/1014/pick_and_place_47demos_1014_pc_tip_gray.zarr", help="Path to the Zarr dataset containing tip_depth.")
+    parser.add_argument("--zarr_path", default="data/1014/pick_and_place_47demos_1014_pc_tactile.zarr", help="Path to the Zarr dataset containing tip_depth.")
     parser.add_argument("--start_episode", type=int, default=0, help="Episode index to start replaying from.")
     parser.add_argument("--num_episodes", type=int, default=None, help="Number of episodes to replay (default: all).")
     parser.add_argument("--slow", action="store_true", help="Slow down playback for manual inspection.")

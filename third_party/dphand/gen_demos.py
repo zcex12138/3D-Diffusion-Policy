@@ -3,16 +3,14 @@ import argparse
 import os
 import zarr
 import numpy as np
-from dphand_env.envs.pick_and_place_env import PickAndPlaceEnv
-from dphand_env.mujoco.wrappers import TeleopIntervention
-from diffusion_policy_3d.env import DphandPointCloudEnvWrapper
+from diffusion_policy_3d.env.dphand.env_factory import make_env
 from termcolor import cprint
 import copy
 import cv2
 
 
 def main(args):
-	save_dir = os.path.join(args.data_dir, 'panda_' + args.task_name + '.zarr')
+	save_dir = os.path.join(args.data_dir, args.task_name + '.zarr')
 	if os.path.exists(save_dir):
 		cprint('Data already exists at {}'.format(save_dir), 'white')
 		cprint("If you want to overwrite, delete the existing directory first.", "white")
@@ -27,12 +25,20 @@ def main(args):
 			return
 	os.makedirs(save_dir, exist_ok=True)
 	# 创建环境
-	env = PickAndPlaceEnv(config="pick_cube_env_cfg", render_mode="human")
-	env = TeleopIntervention(env, ip="192.168.3.80", test=False, use_relative_pose=True)
-	env = DphandPointCloudEnvWrapper(
-		env=env,
-		num_points=1024,
-		use_point_cloud=False  # 生成点云
+	env = make_env(
+		"diffusion_policy_3d/env/dphand/configs/pick_and_place_pc.yaml",
+		use_tactile_obs=True,
+		wrapper_overrides={
+			'DphandPointCloudEnvWrapper': {
+				'use_point_cloud': False,
+			},
+			'TeleopIntervention': {
+				'enabled': True,
+				'test': False,
+				'ip': "192.168.3.100",
+				'use_relative_pose': True,
+			},
+		}
 	)
 	
 	total_count = 0
@@ -61,14 +67,13 @@ def main(args):
 		)
 		obs, reward, done, info = env.step(action) # action会由遥操作接口进行修改
 		env.render()
-		img = np.concatenate([obs['image']['front'], obs['image']['wrist']], axis=0)
-		cv2.imshow('image', cv2.resize(img, (0,0), fx=3, fy=3))
+		img = np.concatenate([obs['image']['front'].transpose(1,2,0), obs['image']['wrist'].transpose(1,2,0)], axis=0)
+		cv2.imshow('image', cv2.resize(img, (0,0), fx=2, fy=2))
 		cv2.waitKey(1)
 
 		if start == False and env.keyboard == "enter":
 			start = True
 			obs = env.reset()
-			done = False
 			ep_reward = 0.
 			ep_success = False
 			front_image_arrays_sub = []
@@ -114,7 +119,6 @@ def main(args):
 			if env.keyboard == "+" or env.keyboard == "r":
 				print("Re-start recording demos.\n")
 				obs = env.reset()
-				done = False
 				ep_reward = 0.
 				ep_success = False
 				front_image_arrays_sub = []
@@ -138,11 +142,7 @@ def main(args):
 	# save img, state, action arrays into data, and episode ends arrays into meta
 	front_image_arrays = np.stack(front_image_arrays, axis=0)
 	wrist_image_arrays = np.stack(wrist_image_arrays, axis=0)
-	if front_image_arrays.shape[1] == 3: # make channel last
-		front_image_arrays = np.transpose(front_image_arrays, (0,2,3,1))
 
-	if wrist_image_arrays.shape[1] == 3: # make channel last
-		wrist_image_arrays = np.transpose(wrist_image_arrays, (0,2,3,1))
 	state_arrays = np.stack(state_arrays, axis=0)
 	full_state_arrays = np.stack(full_state_arrays, axis=0)
 	depth_arrays = np.stack(depth_arrays, axis=0)
@@ -160,7 +160,7 @@ def main(args):
 	zarr_image.create_dataset('front', data=front_image_arrays, chunks=front_image_chunk_size, dtype='uint8', overwrite=True, compressor=compressor)
 	zarr_image.create_dataset('wrist', data=wrist_image_arrays, chunks=wrist_image_chunk_size, dtype='uint8', overwrite=True, compressor=compressor)
 	zarr_data.create_dataset('depth', data=depth_arrays, chunks=depth_chunk_size, dtype='float32', overwrite=True, compressor=compressor)
-	zarr_data.create_dataset('state', data=state_arrays, chunks=state_chunk_size, dtype='float32', overwrite=True, compressor=compressor)
+	zarr_data.create_dataset('agent_pos', data=state_arrays, chunks=state_chunk_size, dtype='float32', overwrite=True, compressor=compressor)
 	zarr_data.create_dataset('full_state', data=full_state_arrays, chunks=full_state_chunk_size, dtype='float32', overwrite=True, compressor=compressor)
 	zarr_data.create_dataset('action', data=action_arrays, chunks=action_chunk_size, dtype='float32', overwrite=True, compressor=compressor)
 	zarr_meta.create_dataset('init_state', data=init_state_arrays, dtype='float32', overwrite=True, compressor=compressor)
@@ -178,7 +178,7 @@ def main(args):
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--task_name', type=str, default="pick_and_place_1014", choices=["pick_and_place"])
-	parser.add_argument('--data_dir', type=str, default="/home/yhx/workspace/3D-Diffusion-Policy/data/1014" )
+	parser.add_argument('--task_name', type=str, default="pick_and_place_1117")
+	parser.add_argument('--data_dir', type=str, default="/home/mpi/workspace/yhx/3D-Diffusion-Policy/data/1117" )
 	args = parser.parse_args()
 	main(args)

@@ -1,33 +1,24 @@
 defaults:
+  - dp3
+  - override /task: pick_and_place_tactile
   - _self_
-  - task: adroit_hammer
 
-name: train_dp3
 _target_: diffusion_policy_3d.workspace.train_dp3_workspace.TrainDP3Workspace
 
+name: train_dp3_tactile
+exp_name: tactile_dp3
 task_name: ${task.name}
 shape_meta: ${task.shape_meta}
-exp_name: "debug"
-
-# horizon: 4
-horizon: 16
-n_obs_steps: 2
-# n_action_steps: 3
-n_action_steps: 8
-n_latency_steps: 0
-dataset_obs_steps: ${n_obs_steps}
-keypoint_visible_rate: 1.0
-obs_as_global_cond: True
 
 policy:
   _target_: diffusion_policy_3d.policy.dp3.DP3
-  use_point_crop: true
+  use_point_crop: false
   condition_type: film
   use_down_condition: true
   use_mid_condition: true
   use_up_condition: true
   use_pc_color: false
-  
+
   diffusion_step_embed_dim: 128
   down_dims:
   - 512
@@ -53,7 +44,7 @@ policy:
     set_alpha_to_one: True
     steps_offset: 0
     prediction_type: sample
-
+  
   num_inference_steps: 10
   obs_as_global_cond: true
   shape_meta: ${shape_meta}
@@ -66,17 +57,15 @@ policy:
     final_norm: layernorm # layernorm, none
     normal_channel: false
 
-
-ema:
-  _target_: diffusion_policy_3d.model.diffusion.ema_model.EMAModel
-  update_after_step: 0
-  inv_gamma: 1.0
-  power: 0.75
-  min_value: 0.0
-  max_value: 0.9999
+  tactile_encoder_cfg:
+    backbone: resnet18
+    in_channels: 2
+    output_dim: 64
+    weights: "IMAGENET1K_V1"
+    freeze_backbone: false
 
 dataloader:
-  batch_size: 128
+  batch_size: 512
   num_workers: 8
   shuffle: True
   pin_memory: True
@@ -84,7 +73,7 @@ dataloader:
 
 val_dataloader:
   batch_size: 128
-  num_workers: 8
+  num_workers: 4
   shuffle: False
   pin_memory: True
   persistent_workers: False
@@ -103,7 +92,7 @@ training:
   resume: False
   lr_scheduler: cosine
   lr_warmup_steps: 500
-  num_epochs: 3000
+  num_epochs: 3050
   gradient_accumulate_every: 1
   use_ema: True
   rollout_every: 250

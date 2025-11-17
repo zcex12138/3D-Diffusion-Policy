@@ -1,4 +1,4 @@
-name: dphand_panda_pick-place
+name: pick_and_place_pc
 
 task_name: ${name}
 

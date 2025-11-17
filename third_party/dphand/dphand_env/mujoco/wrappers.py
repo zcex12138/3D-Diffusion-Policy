@@ -91,6 +91,6 @@ class TeleopIntervention(gym.ActionWrapper):
         if self.use_relative_pose:
             self._init_pos = self.env.unwrapped.data.sensor('tcp_pos').data.astype(np.float32)
         self.keyboard = None
-        for i in range(20):
+        for i in range(5):
             self.step(np.zeros(self.action_space.shape))  # 让expert更新初始位置
         return obs, info

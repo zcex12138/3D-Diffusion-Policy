@@ -169,13 +169,34 @@ class MultiStepWrapper(gym.Wrapper):
         elif isinstance(self.observation_space, spaces.Dict):
             result = dict()
             for key in self.observation_space.keys():
-                result[key] = stack_last_n_obs(
-                    [obs[key] for obs in self.obs],
-                    n_steps
-                )
+                # Check if the value is a nested dict (e.g., tactile: {thumb_tip_cam: ..., index_tip_cam: ...})
+                first_obs_value = self.obs[-1][key]
+                if isinstance(first_obs_value, dict):
+                    # Recursively handle nested dict
+                    result[key] = self._get_nested_obs(key, n_steps)
+                else:
+                    # Regular array/tensor value
+                    result[key] = stack_last_n_obs(
+                        [obs[key] for obs in self.obs],
+                        n_steps
+                    )
             return result
         else:
             raise RuntimeError('Unsupported space type')
+    
+    def _get_nested_obs(self, key, n_steps=1):
+        """
+        Handle nested dict observations (e.g., tactile: {thumb_tip_cam: ..., index_tip_cam: ...})
+        """
+        result = dict()
+        # Get all sub-keys from the first observation
+        first_obs_dict = self.obs[-1][key]
+        for sub_key in first_obs_dict.keys():
+            result[sub_key] = stack_last_n_obs(
+                [obs[key][sub_key] for obs in self.obs],
+                n_steps
+            )
+        return result
 
     def _add_info(self, info):
         for key, value in info.items():

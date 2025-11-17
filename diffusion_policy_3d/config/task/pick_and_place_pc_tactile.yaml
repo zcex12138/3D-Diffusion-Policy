@@ -1,4 +1,4 @@
-name: pick_and_place_pc_and_pos
+name: pick_and_place_pc_tactile
 
 task_name: ${name}
 
@@ -8,32 +8,35 @@ shape_meta: &shape_meta
       shape: [512, 3]
       type: point_cloud
     agent_pos:
-      shape: [32]  # 7末端执行器位置 + 22关节角度
+      shape: [29]
       type: low_dim
-    full_state: # full state并不会输入到dp3 encoder中，因此输入只有前面两个
-      shape: [65]  # 7末端执行器位置 + 7物体姿态 + 7目标姿态 + 22关节角度 + 22关节速度
-      type: low_dim
+    tactile/thumb_tip_cam:
+        shape: [84, 84]
+        type: depth
+    tactile/index_tip_cam:
+      shape: [84, 84]
+      type: depth
   action:
-    shape: [29]  # 7末端执行器位置 + 22关节角度
+    shape: [29]
 
 env_runner:
   _target_: diffusion_policy_3d.env_runner.dphand_pc_runner.DphandPointCloudRunner
   eval_episodes: 20
-  max_steps: 1000  # 每个episode的最大步数
+  max_steps: 1000
   n_obs_steps: ${n_obs_steps}
   n_action_steps: ${n_action_steps}
   fps: 30
   num_points: 512
-  use_object_pos: true
+  use_tactile_obs: true
   render_mode: "rgb_array"
-  use_tactile_obs: false
-  
+
 dataset:
   _target_: diffusion_policy_3d.dataset.dphand_dataset.DphandDataset
-  zarr_path: data/1014/pick_and_place_47demos_1014_pc_and_pos.zarr
+  zarr_path: data/1117/pick_and_place_60demos_1117_pc_tactile.zarr
   horizon: ${horizon}
   pad_before: ${eval:'${n_obs_steps}-1'}
   pad_after: ${eval:'${n_action_steps}-1'}
   seed: 42
   val_ratio: 0.02
   max_train_episodes: 90
+  shape_meta: ${shape_meta}

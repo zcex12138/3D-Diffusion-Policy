@@ -94,6 +94,7 @@ class DphandPointCloudRunner(BaseRunner):
             is_success = False
             while not done:
                 np_obs_dict = dict(obs)
+                # Convert numpy arrays to torch tensors, handling nested dicts
                 obs_dict = dict_apply(np_obs_dict,
                                       lambda x: torch.from_numpy(x).to(
                                           device=device))
@@ -105,6 +106,9 @@ class DphandPointCloudRunner(BaseRunner):
                         obs_dict_input['agent_pos'] = torch.cat([obs_dict['agent_pos'], obs_dict['full_state'][:,-14:-11]], dim=1).unsqueeze(0)
                     else:
                         obs_dict_input['agent_pos'] = obs_dict['agent_pos'].unsqueeze(0)
+                    if 'tactile' in obs_dict:
+                        for key in obs_dict['tactile'].keys():
+                            obs_dict_input[f'tactile/{key}'] = obs_dict['tactile'][key].unsqueeze(0)
                     action_dict = policy.predict_action(obs_dict_input)
 
                 np_action_dict = dict_apply(action_dict,

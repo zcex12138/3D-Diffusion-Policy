@@ -48,9 +48,10 @@ def main(args):
     
     # 逐个处理每张图像
     for i in range(len(rgb_arrays)):
-        rgb_img = rgb_arrays[i].copy()
-        depth_img = depth_arrays[i].copy()
-        
+        # copy()为了确保图像是内存连续的
+        rgb_img = rgb_arrays[i].transpose(1,2,0).copy()
+        depth_img = depth_arrays[i].squeeze().copy()
+
         if i % 100 == 0:  # 每100张图像打印一次进度
             cprint(f"处理图像 {i}/{len(rgb_arrays)}", "cyan")
 
@@ -62,12 +63,11 @@ def main(args):
         cv2.waitKey(1)
         
         # 生成点云
-        pc = pc_generator.generatePointCloudFromImages(rgb_arrays[i], depth_arrays[i], use_rgb=True)
+        pc = pc_generator.generatePointCloudFromImages(rgb_img, depth_arrays[i].squeeze(), use_rgb=True)
         point_cloud = point_cloud_sampling(pc, args.num_points, method='fps')
         
         all_point_clouds.append(point_cloud)
         
-        # 可视化（如果启用）
         visualizer_3d.update_point_cloud(point_cloud)
 
     # 转换为numpy数组
@@ -77,7 +77,7 @@ def main(args):
     # 保存点云数据到新的zarr文件
     output_path = args.output_path
     if output_path is None:
-        output_path = zarr_path.replace('.zarr', '_with_pointcloud.zarr')
+        output_path = zarr_path.replace('.zarr', '_pc.zarr')
     
     cprint(f"保存点云数据到: {output_path}", "yellow")
     
@@ -132,7 +132,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='从RGB和深度图像生成点云数据')
     parser.add_argument('--zarr_path', 
-        default="./data/1014/pick_and_place_47demos_1014.zarr", 
+        default="./data/1117/pick_and_place_1117.zarr", 
         type=str)
     parser.add_argument('--num_points', type=int, default=512, help='点云采样点数')
     parser.add_argument('--output_path', type=str, default=None, help='输出文件路径')

@@ -1,4 +1,4 @@
-name: dphand_panda_pick-place
+name: pick_and_place_image
 
 image_shape: &image_shape [3, 84, 84]
 shape_meta: &shape_meta

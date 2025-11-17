@@ -55,8 +55,32 @@ class LinearNormalizer(DictOfTensorMixin):
         if isinstance(x, dict):
             result = dict()
             for key, value in x.items():
-                params = self.params_dict[key]
-                result[key] = _normalize(value, params, forward=forward)
+                # Check if key exists in params_dict
+                if key not in self.params_dict:
+                    # If value is a dict, check if any nested keys exist in params_dict
+                    # This handles cases like 'tactile': {'thumb_tip_cam': ...} where
+                    # normalizer has 'tactile/thumb_tip_cam' but not 'tactile'
+                    # The nested keys will be handled by the encoder, not the normalizer
+                    if isinstance(value, dict):
+                        # Check if any nested keys (with prefix) exist in params_dict
+                        has_nested_keys = any(f"{key}/{sub_key}" in self.params_dict for sub_key in value.keys())
+                        if has_nested_keys:
+                            # Skip the parent key, nested keys will be handled separately by encoder
+                            # Do not normalize nested structures like 'tactile' dict
+                            continue
+                        else:
+                            # No nested keys found, recursively normalize the dict
+                            result[key] = self._normalize_impl(value, forward=forward)
+                    else:
+                        # Key not found and value is not a dict
+                        # For image types (like merged tactile), preserve it even if not in normalizer
+                        # The encoder can handle it (it may apply its own normalization)
+                        # This handles cases where tactile is merged in dataloader but normalizer
+                        # wasn't properly initialized with it
+                        result[key] = value
+                else:
+                    params = self.params_dict[key]
+                    result[key] = _normalize(value, params, forward=forward)
             return result
         else:
             if '_default' not in self.params_dict:

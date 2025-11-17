@@ -45,6 +45,28 @@
             "python": "${command:python.interpreterPath}"
         },
         {
+            "name": "Train DP3 Tactile",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "args": [
+                "--config-name=dp3_tactile.yaml",
+                "task=pick_and_place_pc_tactile",
+                "exp_name=pick_and_place_pc_tactile",
+                "logging.group=dp3_tactile"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "MUJOCO_GL": "egl",
+                "HYDRA_FULL_ERROR": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+            },
+            "justMyCode": false,
+            "stopOnEntry": false,
+            "python": "${command:python.interpreterPath}"
+        },
+        {
             "name": "Train DP - Dphand Pick Place",
             "type": "python",
             "request": "launch",

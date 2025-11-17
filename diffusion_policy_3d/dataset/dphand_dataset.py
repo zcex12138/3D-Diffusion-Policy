@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 import torch
 import numpy as np
 import copy
@@ -20,12 +20,14 @@ class DphandDataset(BaseDataset):
             seed=42,
             val_ratio=0.0,
             max_train_episodes=None,
+            shape_meta=None,
             ):
         super().__init__()
         
-        # dphand环境的数据键包括：state, action, point_cloud, img, depth, full_state
-        self.replay_buffer = ReplayBuffer.copy_from_path(
-            zarr_path, keys=['state', 'front', 'wrist', 'action', 'point_cloud', 'full_state'])
+        # Build keys from shape_meta
+        self.obs_meta = shape_meta.get('obs', {}) if shape_meta is not None else {}
+        keys = list(self.obs_meta.keys()) + ['action']
+        self.replay_buffer = ReplayBuffer.copy_from_path(zarr_path, keys=keys)
         val_mask = get_val_mask(
             n_episodes=self.replay_buffer.n_episodes, 
             val_ratio=val_ratio,
@@ -61,32 +63,36 @@ class DphandDataset(BaseDataset):
 
     def get_normalizer(self, mode='limits', **kwargs):
         data = {
-            'action': self.replay_buffer['action'],
-            'agent_pos': self.replay_buffer['state'],  # 使用state作为agent_pos
-            'point_cloud': self.replay_buffer['point_cloud'],
-            'full_state': self.replay_buffer['full_state'],
+            'action': self.replay_buffer['action']
+            # 'agent_pos'
+            # 'point_cloud'
         }
+        for key, meta in self.obs_meta.items():
+            if meta.get('type') in ['low_dim', 'point_cloud', 'depth'] and key in self.replay_buffer:
+                data[key] = self.replay_buffer[key]
+
         normalizer = LinearNormalizer()
         normalizer.fit(data=data, last_n_dims=1, mode=mode, **kwargs)
+        normalizer['image'] = get_image_range_normalizer()
         return normalizer
 
     def __len__(self) -> int:
         return len(self.sampler)
 
     def _sample_to_data(self, sample):
-        # 使用state作为agent_pos（机器人关节状态：位置+速度）
-        agent_pos = sample['state'][:,].astype(np.float32)
-        # 提取点云数据
-        point_cloud = sample['point_cloud'][:,].astype(np.float32)
-
-        data = {
-            'obs': {
-                'point_cloud': point_cloud, 
-                'agent_pos': agent_pos
-            },
+        obs_dict = {}
+        for key, meta in self.obs_meta.items():
+            if meta.get('type') in ['low_dim', 'point_cloud'] and key in sample:
+                obs_dict[key] = sample[key][:,].astype(np.float32)
+            elif meta.get('type') in ['image'] and key in sample:
+                obs_dict[key] = np.moveaxis(sample[key].astype(np.float32),-1,1)/255 # (N, H, W, 3) -> (N, 3, H, W)
+            elif meta.get('type') in ['depth'] and key in sample:
+                obs_dict[key] = sample[key][:, np.newaxis, :, :].astype(np.float32) # (N, H, W) -> (N, 1, H, W)
+        
+        return {
+            'obs': obs_dict,
             'action': sample['action'].astype(np.float32)
         }
-        return data
     
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         sample = self.sampler.sample_sequence(idx)
@@ -174,3 +180,37 @@ class DphandImageDataset(BaseDataset):
         data = self._sample_to_data(sample)
         torch_data = dict_apply(data, torch.from_numpy)
         return torch_data
+
+def test():
+    import os
+    zarr_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', '1014', 'pick_and_place_47demos_1014_pc_tactile.zarr')
+    shape_meta = {
+        'obs': {
+            'point_cloud': {
+                'shape': [512, 3],
+                'type': 'point_cloud'
+            },
+            'agent_pos': {
+                'shape': [29],
+                'type': 'low_dim'
+            },
+            'tactile/thumb_tip_cam': {
+                'shape': [84, 84],
+                'type': 'depth'
+            },
+            'tactile/index_tip_cam': {
+                'shape': [84, 84],
+                'type': 'depth'
+            }
+        },
+        'action': {
+            'shape': [29],
+            'type': 'low_dim'
+        }
+    }
+    dataset = DphandDataset(zarr_path, horizon=4, pad_before=3, pad_after=0, shape_meta=shape_meta)
+    print(dataset[0]['obs']['agent_pos'].shape)
+    print(dataset[400]['obs']['tactile/thumb_tip_cam'].shape)
+
+if __name__ == '__main__':
+    test()

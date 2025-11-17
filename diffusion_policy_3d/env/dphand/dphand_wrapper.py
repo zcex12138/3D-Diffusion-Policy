@@ -35,11 +35,15 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
 
     def _update_observation_space(self):
         """更新观察空间，在原始环境观察基础上添加点云数据"""
-        obs_space = {}
+        image_dict = {}
         for cam_name in self.cam_names:
-            obs_space[cam_name] = spaces.Box(0, 255, (self.image_size, self.image_size, 3), np.float32) # image
-        obs_space['depth'] = spaces.Box(0, 255, (self.image_size, self.image_size), np.float32)
-        obs_space['point_cloud'] = spaces.Box(-np.inf, np.inf, (self.num_points, 6), np.float32)  # 修改为6通道以支持RGB颜色
+            image_dict[cam_name] = spaces.Box(0, 255, (3, self.image_size, self.image_size), np.float32) # image
+        
+        obs_space = {
+            'image': spaces.Dict(image_dict),
+            'depth': spaces.Box(0, 255, (1, self.image_size, self.image_size), np.float32),
+            'point_cloud': spaces.Box(-np.inf, np.inf, (self.num_points, 6), np.float32),  # 修改为6通道以支持RGB颜色
+        }
         # 添加机器人状态观察空间（从原始状态中提取）
         obs_sensor_dim = len(self.env.unwrapped._dphand_dof_ids) + 3
         obs_space['agent_pos'] = spaces.Box(-np.inf, np.inf, (obs_sensor_dim,), np.float32)
@@ -50,7 +54,7 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
         if self.use_tactile_obs:
             obs_space['tactile'] = spaces.Dict({
                 cam_name: spaces.Box(0, 255, 
-                    (self.image_size, self.image_size),
+                    (1, self.image_size, self.image_size),
                     np.float32
                 )
                 for cam_name in self.tactile_cam_names
@@ -61,7 +65,7 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
     def observation(self, obs):
         """重写observation方法, 在原始观察基础上添加点云数据"""
         image_dict = {cam_name: obs['image'][cam_name] for cam_name in self.cam_names}
-
+        # 用于生成点云的相机的深度
         depth = self.pc_generator.captureImage(self.pc_generator.cam_id, capture_depth=True)
         if self.use_point_cloud:
             # 生成点云数据
@@ -76,10 +80,10 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
 
         new_obs = {}
         # 在原始观察基础上添加新的观察数据
-        for cam_name in self.cam_names:
-            new_obs[cam_name] = obs['image'][cam_name]
+        # (H, W, 3) -> (3, H, W)
+        new_obs['image'] = {cam_name: obs['image'][cam_name].transpose(2, 0, 1) for cam_name in self.cam_names}
         new_obs['point_cloud'] = point_cloud
-        new_obs['depth'] = depth
+        new_obs['depth'] = np.expand_dims(depth, axis=0)
         new_obs['agent_pos'] = np.concatenate([
             obs["state"]["panda/ee_pos"],
             obs["state"]["panda/ee_quat"],
@@ -98,9 +102,12 @@ class DphandPointCloudEnvWrapper(gym.ObservationWrapper):
             obs["state"]["target_quat"] # 4
         ])
         
-        # 添加触觉观测（如果启用）
+        # 添加触觉深度图（如果启用）(1, H, W)
         if self.use_tactile_obs and self.tactile_cam_names:
-            new_obs['tactile'] = obs['tactile']
+            new_obs['tactile'] = {
+                cam_name: np.expand_dims(obs['tactile'][cam_name], axis=0)
+                for cam_name in self.tactile_cam_names
+            }
         
         return new_obs
 

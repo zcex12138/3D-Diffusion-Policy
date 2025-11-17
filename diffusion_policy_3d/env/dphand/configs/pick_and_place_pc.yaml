@@ -6,12 +6,12 @@ env:
 
 wrappers:
   - type: TeleopIntervention
-    enabled: true
+    enabled: false
     params:
       ip: "192.168.3.80"
       test: true
       use_relative_pose: true
-  
+
   - type: DphandPointCloudEnvWrapper
     enabled: true
     params:

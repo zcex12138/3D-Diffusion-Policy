@@ -44,7 +44,14 @@ class OSViewer(OffScreenViewer):
         segment, depth = self.render_rgb_cam(render_mode="rgbd_tuple", camera_id=camera_id, segmentation=True, size=size)
         segment = segment[:, :, 1] > geom_id
         depth = depth * segment
-        return segment, depth
+        return segment, self.depthimg2Meters(depth)
+
+    # z-buffer map: depth:[0, 1] -> image:[near, far]
+    def depthimg2Meters(self, depth):
+        near = self.model.vis.map.znear * self.model.stat.extent
+        far = self.model.vis.map.zfar * self.model.stat.extent
+        # 为了避免点云中出现大量原点附近的点（占一半以上），需要减去near然后筛掉0的点
+        return near / (1 - depth * (1 - near / far)) - near
 
 class Viewer(WindowViewer):
     def __init__(
@@ -181,7 +188,10 @@ class Viewer(WindowViewer):
         segment, depth = self.render_rgb_cam(render_mode="rgbd_tuple", camera_id=camera_id, segmentation=True, size=size)
         segment = segment[:, :, 1] > geom_id
         depth = depth * segment
-        return segment, depth
-    
-    # def is_alived(self):
-    #     return glfw.window_should_close(self.window)
+        return segment, self.depthimg2Meters(depth)
+
+    def depthimg2Meters(self, depth):
+        near = self.model.vis.map.znear * self.model.stat.extent
+        far = self.model.vis.map.zfar * self.model.stat.extent
+        # 为了避免点云中出现大量原点附近的点（占一半以上），需要减去near然后筛掉0的点
+        return near / (1 - depth * (1 - near / far)) - near
