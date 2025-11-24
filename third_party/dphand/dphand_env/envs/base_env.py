@@ -165,7 +165,7 @@ class BaseEnv(MujocoGymEnv):
         if self.use_tactile_obs:
             obs['tactile'] = {}
             for cam_name in self.tactile_cam_names:
-                _, obs['tactile'][cam_name] = self._viewer.render_segment_depth(self.tactile_cam_ids[cam_name], size=(self.tactile_image_size, self.tactile_image_size))
+                _ , obs['tactile'][cam_name] = self._viewer.render_segment_depth(self.tactile_cam_ids[cam_name], size=(self.tactile_image_size, self.tactile_image_size),Target_geom_id=self.model.geom(name = self.cfg["env"]["Target_name"]).id)
 
         for obs_key in self.cfg["obs"]["extra_obs_keys"]:
             obs["state"][obs_key] = self.data.sensor(obs_key).data.astype(np.float32)

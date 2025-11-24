@@ -168,6 +168,66 @@ class Viewer(WindowViewer):
         else:  # "rgbd_tuple"
             return rgb_img, depth_img
     
+    def render_depth_single_geom(self, camera_id: int, target_geom_id: int, size=None):
+        """
+        只对一个 geom 渲染 depth（其他 geom 在渲染时被隐藏）
+        """
+        # 1. 备份 camera
+        original_cam_id = self.cam.fixedcamid
+        original_type = self.cam.type
+        # 2. 备份 geom_group 和 vopt.geomgroup
+        original_geom_group = self.model.geom_group.copy()
+        original_vopt_group = self.vopt.geomgroup.copy()
+        # 3. 设置 camera
+        self.cam.fixedcamid = camera_id
+        self.cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+        # 4. 把除了 target_geom_id 的其他 geom 全部放到隐藏组
+        IGNORE_GROUP = 5
+        for geom_id in range(self.model.ngeom):
+            if geom_id != target_geom_id:
+                self.model.geom_group[geom_id] = IGNORE_GROUP
+        # 5. 关闭隐藏组的渲染
+        self.vopt.geomgroup[IGNORE_GROUP] = 0
+
+        # 6. updateScene + render + readPixels
+        mujoco.mjv_updateScene(
+            self.model,
+            self.data,
+            self.vopt,
+            self.pert,
+            self.cam,
+            mujoco.mjtCatBit.mjCAT_ALL,
+            self.scn,
+        )
+
+        if size is not None:
+            self.viewport.width, self.viewport.height = size
+        else:
+            self.viewport.width = self.img_obs_width
+            self.viewport.height = self.img_obs_height
+
+        mujoco.mjr_render(self.viewport, self.scn, self.con)
+
+        rgb_arr = np.zeros(
+            3 * self.viewport.width * self.viewport.height, dtype=np.uint8
+        )
+        depth_arr = np.zeros(
+            self.viewport.width * self.viewport.height, dtype=np.float32
+        )
+        mujoco.mjr_readPixels(rgb_arr, depth_arr, self.viewport, self.con)
+
+        depth_img = depth_arr.reshape((self.viewport.height, self.viewport.width))
+        depth_img = depth_img[::-1, :]
+
+        # 7. 恢复 camera 和 group 设置
+        self.model.geom_group[:] = original_geom_group
+        self.vopt.geomgroup[:] = original_vopt_group
+        self.cam.fixedcamid = original_cam_id
+        self.cam.type = original_type
+
+        # 8. 返回 depth_img
+        return depth_img
+
     def render(self):
         # self.vopt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = 1
         # self.vopt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = 1
@@ -181,14 +241,29 @@ class Viewer(WindowViewer):
     def set_sitegroup(self, group_id, flag: bool):
         self.vopt.sitegroup[group_id] = flag
     
-    def render_segment_depth(self, camera_id, geom_id=0, size=None):
+    def render_segment_depth(self, camera_id, geom_id=0, size=None, Target_geom_id = None):
         """
         用于在深度图中过滤 id < geom_id 的物体
         """
-        segment, depth = self.render_rgb_cam(render_mode="rgbd_tuple", camera_id=camera_id, segmentation=True, size=size)
+        segment, depth = self.render_rgb_cam(render_mode="rgbd_tuple", camera_id=camera_id, segmentation=True, size=size)    
         segment = segment[:, :, 1] > geom_id
-        depth = depth * segment
+        if Target_geom_id is not None:
+            depth = self.render_depth_single_geom(camera_id=camera_id, target_geom_id=Target_geom_id, size=size)
+            # print("successfully rendered segment depth, the target_geom_id:", Target_geom_id,"tht max depth value is:", np.max(self.depthimg2Meters_(depth)) ,"the min depth value(except zeros) is:", np.min(self.depthimg2Meters_(depth)[self.depthimg2Meters_(depth)>0]))
+            depth_meters = self.depthimg2Meters_(depth)
+            valid = (depth_meters > 0) & (depth_meters < 0.035)
+            depth_meters = depth_meters * valid
+            return segment, depth_meters
+        else:
+            depth = depth * segment
+        # print("successfully rendered segment depth, the target_geom_id:", Target_geom_id,"tht max depth value is:", np.max(self.depthimg2Meters(depth)) ,"the min depth value(except zeros) is:", np.min(self.depthimg2Meters(depth)[self.depthimg2Meters(depth)>0]))
         return segment, self.depthimg2Meters(depth)
+    
+    def depthimg2Meters_(self, depth):
+        near = self.model.vis.map.znear * self.model.stat.extent
+        far = self.model.vis.map.zfar * self.model.stat.extent
+        # 为了避免点云中出现大量原点附近的点（占一半以上），需要减去near然后筛掉0的点
+        return near + depth * (far - near)
 
     def depthimg2Meters(self, depth):
         near = self.model.vis.map.znear * self.model.stat.extent

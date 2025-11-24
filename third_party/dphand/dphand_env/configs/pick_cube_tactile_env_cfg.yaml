@@ -11,6 +11,7 @@ env:
   use_tactile_obs: True
   tactile_camera_names: ['thumb_tip_cam', 'index_tip_cam']
   tactile_image_size: 84
+  Target_name: 'object'
 
 franka:
   pos_gains: [600.0, 600.0, 600.0]

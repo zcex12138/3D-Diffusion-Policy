@@ -41,6 +41,27 @@ def depth_to_uint8(depth, max_depth=0.000005): #before: 7e-5
 
     return depth_uint8
 
+def depth_to_uint8_for_replay(depth, annotate=True):
+    depth = depth.astype(np.float32)
+    H, W = depth.shape
+
+    valid = (depth > 0) & (depth < 0.035)  # 有效深度范围
+    if not np.any(valid):
+        return np.zeros((H, W, 3), np.uint8)
+
+    d_min, d_max = depth[valid].min(), depth[valid].max()
+    # valid_max = (depth >= d_min*1000) & (depth <= d_max )  # 去除极大值噪声
+    # 线性反转（深度小亮，深度大暗）
+    gray = np.zeros_like(depth, np.float32)
+    gray[valid] = (d_max - depth[valid]) / (d_max - d_min + 1e-15)
+    gray = (gray * 255).astype(np.uint8)
+    # gray [valid_max] = 100
+    img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+    cy, cx = H // 2, W // 2
+    center_depth = depth[cy, cx]
+    # print(f"Depth Stats - min: {d_min:.5f}, max: {d_max:.5f}, center: {center_depth:.5f}")
+    # time.sleep(0.1)  # 确保打印顺序正确
+    return img
 
 class TipDepthZarrWriter:
     """
@@ -205,7 +226,7 @@ class DphandDepthExporter:
             # 渲染每个指尖相机的深度并转成灰度 BGR 图
             for cam_name in self.tip_cam_names:
                 depth = obs['tactile'][cam_name].squeeze()
-                depth_uint8 = depth_to_uint8(depth)
+                depth_uint8 = depth_to_uint8_for_replay(depth)
                 # print(f"Step {step_idx} | {cam_name} depth range: min={d_min:.6f} m, max={d_max:.6f} m")
                 img_dict[cam_name] = depth
                 if visualize:
@@ -259,13 +280,13 @@ def main():
     parser.add_argument(
         "--zarr_path",
         type=str,
-        default="data/1117/pick_and_place_1117_pc.zarr",
+        default="data/pick_and_place_60demos_1117_pc.zarr",
         help="原始 zarr 数据路径",
     )
     parser.add_argument(
         "--depth_zarr_path",
         type=str,
-        default=None,
+        default="data",
         help="输出 zarr 路径（默认自动加后缀 _tip_gray.zarr）",
     )
     parser.add_argument(

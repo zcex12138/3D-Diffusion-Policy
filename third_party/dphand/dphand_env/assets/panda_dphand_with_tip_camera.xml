@@ -45,7 +45,8 @@
     </default>   
 
     <default class="tip_camera">
-      <camera pos="0 -0.003 -0.02" fovy="0.02" quat="0.7071068 0.7071068 0 0" />
+      <camera pos="0 -0.03 -0.02" fovy="0.03" quat="0.7071068 0.7071068 0 0" />
+      <!-- <camera pos="0 -0.03 -0.02" fovy="0.2" quat="0.7071068 0.7071068 0 0" /> -->
     </default>
 
   </default>
